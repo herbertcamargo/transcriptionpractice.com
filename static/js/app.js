@@ -874,7 +874,7 @@ function hidePlansBox() {
     }
 }
 
-function showHomeContent() {
+window.showHomeContent = function() {
     // Parar o vídeo quando navegar para a página home
     stopVideoPlayback();
     
