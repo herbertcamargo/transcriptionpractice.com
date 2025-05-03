@@ -36,6 +36,11 @@ def create_app(test_config=None):
     def plans():
         return send_from_directory('static', 'index.html')
 
+    # Serve JavaScript files with correct MIME type
+    @app.route('/static/js/<path:filename>')
+    def serve_js(filename):
+        return send_from_directory('static/js', filename, mimetype='application/javascript')
+
     # Rotas SPA para evitar 404 em refresh
     @app.route('/test-1')
     @app.route('/test-2')
