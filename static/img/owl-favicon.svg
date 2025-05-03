@@ -1,0 +1,14 @@
+<svg width="60" height="60" viewBox="2 2 20 20" xmlns="http://www.w3.org/2000/svg">
+    <!-- Main body -->
+    <path d="M12 4c-4.4 0-8 3.6-8 8 0 3.5 2.3 6.5 5.5 7.5V20c0 .6.4 1 1 1h3c.6 0 1-.4 1-1v-.5c3.2-1 5.5-4 5.5-7.5 0-4.4-3.6-8-8-8z" fill="#D4946A"/>
+    <!-- Eyes background -->
+    <circle cx="9" cy="11" r="2.8" fill="#FFF5E6"/>
+    <circle cx="15" cy="11" r="2.8" fill="#FFF5E6"/>
+    <!-- Eyes (pupils) -->
+    <circle cx="9" cy="11" r="1.4" fill="#333333"/>
+    <circle cx="15" cy="11" r="1.4" fill="#333333"/>
+    <!-- Beak -->
+    <circle cx="12" cy="13" r="1" fill="#FFA500"/>
+    <!-- Feet -->
+    <path d="M9 20l-1 2.5M15 20l1 2.5" stroke="#FFB700" stroke-width="2" stroke-linecap="round"/>
+</svg> 

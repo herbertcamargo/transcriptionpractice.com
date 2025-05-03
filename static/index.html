@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcription Practice</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="/static/img/owl-favicon.svg">
+    <link rel="icon" type="image/png" href="/static/img/owl-favicon.png">
+</head>
+<body>
+    <!-- Fixed Top Bar -->
+    <div class="top-bar">
+        <div class="nav-left">
+            <span id="site-title" style="cursor:pointer;font-family:sans-serif;font-weight:bold;color:rgba(44,62,80,0.8);font-size:20px;letter-spacing:0.02em;line-height:1.1;">Transcription Practice</span>
+        </div>
+        <div class="nav-center">
+            <a id="owl-logo-link" href="#" style="display:flex;align-items:center;justify-content:center;">
+                <svg id="owl-logo" width="48" height="48" viewBox="2 2 20 20" xmlns="http://www.w3.org/2000/svg" style="cursor:pointer;">
+                    <path d="M12 4c-4.4 0-8 3.6-8 8 0 3.5 2.3 6.5 5.5 7.5V20c0 .6.4 1 1 1h3c.6 0 1-.4 1-1v-.5c3.2-1 5.5-4 5.5-7.5 0-4.4-3.6-8-8-8z" fill="#D4946A"/>
+                    <circle cx="9" cy="11" r="2.8" fill="#FFF5E6"/>
+                    <circle cx="15" cy="11" r="2.8" fill="#FFF5E6"/>
+                    <circle cx="9" cy="11" r="1.4" fill="#333333"/>
+                    <circle cx="15" cy="11" r="1.4" fill="#333333"/>
+                    <circle cx="12" cy="13" r="1" fill="#FFA500"/>
+                    <path d="M9 20l-1 2.5M15 20l1 2.5" stroke="#FFB700" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </a>
+        </div>
+        <div class="nav-right">
+            <div class="dropdown d-inline-block">
+                <a href="#" class="nav-link dropdown-toggle" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    EN
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
+                    <li><a class="dropdown-item active" href="#" data-lang="en">EN</a></li>
+                    <li><a class="dropdown-item" href="#" data-lang="es">ES</a></li>
+                </ul>
+            </div>
+            <a href="/plans" class="nav-link" id="plans-link">Plans</a>
+            <a href="/login" class="login-button" id="login-link">Login</a>
+        </div>
+    </div>
+
+    <div class="container mt-4 main-content">
+        <!-- Search Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Search for Videos</h4>
+            </div>
+            <div class="card-body">
+                <div class="input-group mb-3">
+                    <input type="text" id="search-input" class="form-control" placeholder="Enter search keywords...">
+                    <button class="btn btn-primary" id="search-button">Search</button>
+                </div>
+                <div id="search-results" class="row">
+                    <!-- Search results will be displayed here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Envolva a seção de vídeo e transcrição -->
+        <div id="video-and-transcription-section" style="display:none;">
+            <div class="content-grid">
+                <!-- Video Player Section -->
+                <div class="video-section" id="video-section">
+                    <h4 id="video-title">Video Title</h4>
+                    <div class="ratio ratio-16x9 mb-3">
+                        <div id="video-player"></div>
+                        <div id="waveform" style="width:100%;height:80px;margin:16px 0;"></div>
+                        <div class="video-placeholder">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                                <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                                <polygon points="9,8 9,16 16,12" fill="currentColor"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transcription Section -->
+                <div class="transcription-section">
+                    <h5 class="transcription-title">Transcription</h5>
+                    <textarea id="transcription-input" class="form-control" rows="10" placeholder="Type your transcription here..."></textarea>
+                </div>
+            </div>
+
+            <!-- Controls and Stats Section -->
+            <div class="controls-and-stats">
+                <!-- Controls Section -->
+                <div class="controls-section">
+                    <!-- Pause Delay Control -->
+                    <div class="control-item">
+                        <h5>Pause Delay</h5>
+                        <select id="pause-delay" class="rewind-select">
+                            <option value="0">0 seconds</option>
+                            <option value="1">1 second</option>
+                            <option value="2">2 seconds</option>
+                            <option value="3">3 seconds</option>
+                            <option value="5">5 seconds</option>
+                        </select>
+                    </div>
+
+                    <!-- Rewind Control -->
+                    <div class="control-item">
+                        <h5>Rewind Time</h5>
+                        <select id="rewind-time" class="rewind-select">
+                            <option value="0.0">0.0 seconds</option>
+                            <option value="0.25">0.25 seconds</option>
+                            <option value="0.5">0.5 seconds</option>
+                            <option value="0.75">0.75 seconds</option>
+                            <option value="1">1 second</option>
+                            <option value="1.5">1.5 seconds</option>
+                            <option value="2">2 seconds</option>
+                            <option value="3">3 seconds</option>
+                            <option value="5">5 seconds</option>
+                            <option value="8">8 seconds</option>
+                            <option value="10">10 seconds</option>
+                        </select>
+                    </div>
+                    <div class="button-container">
+                        <button id="rewind-button" class="btn btn-primary">Rewind</button>
+                        <button id="play-stop-button" class="play-stop-button">Play</button>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="control-item">
+                        <button class="btn btn-primary" id="submit-button">Submit Transcription</button>
+                    </div>
+                </div>
+
+                <!-- Stats Section -->
+                <div class="stats-section" id="stats-section">
+                    <div id="stats-content">
+                        <!-- Stats will be displayed here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transcription Results Section -->
+            <div class="transcription-results-section">
+                <h5 class="transcription-title">Transcription results</h5>
+                <div id="result-container" class="result-textbox" style="display:none"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load YouTube IFrame API first -->
+    <script>
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    </script>
+
+    <!-- Load other scripts after -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
