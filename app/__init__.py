@@ -31,5 +31,20 @@ def create_app(test_config=None):
     @app.route('/')
     def index():
         return app.send_static_file('index.html')
+
+    # Rotas SPA para evitar 404 em refresh
+    @app.route('/test-1')
+    @app.route('/test-2')
+    @app.route('/test-3')
+    @app.route('/plans')
+    @app.route('/login')
+    @app.route('/home')
+    @app.route('/watch')
+    def spa_routes():
+        return app.send_static_file('index.html')
+
+    @app.route('/home-user')
+    def home_user():
+        return app.send_static_file('index.html')
     
     return app 

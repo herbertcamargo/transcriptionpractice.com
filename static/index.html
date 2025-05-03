@@ -29,9 +29,17 @@
             </a>
         </div>
         <div class="nav-right">
-            <a href="#" class="nav-link">Test</a>
-            <a href="#" class="nav-link">Plans</a>
-            <a href="#" class="login-button">Login</a>
+            <div class="dropdown d-inline-block">
+                <a href="#" class="nav-link dropdown-toggle" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    EN
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
+                    <li><a class="dropdown-item active" href="#" data-lang="en">EN</a></li>
+                    <li><a class="dropdown-item" href="#" data-lang="es">ES</a></li>
+                </ul>
+            </div>
+            <a href="/plans" class="nav-link" id="plans-link">Plans</a>
+            <a href="/login" class="login-button" id="login-link">Login</a>
         </div>
     </div>
 
@@ -60,6 +68,7 @@
                     <h4 id="video-title">Video Title</h4>
                     <div class="ratio ratio-16x9 mb-3">
                         <div id="video-player"></div>
+                        <div id="waveform" style="width:100%;height:80px;margin:16px 0;"></div>
                         <div class="video-placeholder">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
                                 <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
@@ -146,6 +155,7 @@
 
     <!-- Load other scripts after -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>
