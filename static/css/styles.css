@@ -329,14 +329,30 @@ body {
 }
 
 .nav-link {
-    color: var(--text-color);
+    color: #2c3e50;
     text-decoration: none;
-    padding: 0.5rem 1rem;
-    transition: color 0.3s ease;
+    font-size: 16px;
+    font-weight: 500;
 }
 
 .nav-link:hover {
-    color: var(--primary-color);
+    color: #34495e;
+}
+
+.login-button {
+    background-color: #6c757d;
+    color: white;
+    padding: 6px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.login-button:hover {
+    background-color: #5a6268;
+    color: white;
 }
 
 /* Remove margin-top since bar is no longer fixed */

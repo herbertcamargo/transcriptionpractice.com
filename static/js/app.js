@@ -6,7 +6,6 @@ let wasManuallyPaused = false;
 let playerReady = false;
 let pauseDelayActive = false;  // New flag to track if pause delay is active
 let wavesurfer = null;
-let currentLanguage = localStorage.getItem('preferredLanguage') || 'en'; // Default language is English
 const TYPING_TIMEOUT = 2000; // 2 seconds
 let lastTranscription = ''; // Store the last submitted transcription
 
@@ -137,150 +136,147 @@ window.onYouTubeIframeAPIReady = function() {
 };
 
 // Event Listeners
-if (searchButton) searchButton.addEventListener('click', searchVideos);
-if (submitButton) submitButton.addEventListener('click', submitTranscription);
-if (rewindButton) rewindButton.addEventListener('click', handleRewind);
-if (playStopButton) playStopButton.addEventListener('click', handlePlayStop);
-if (transcriptionInput) {
-    transcriptionInput.addEventListener('input', function() {
-        console.log('Input detected in transcription box.');
-        if (!playerReady || !youtubePlayer || !youtubePlayer.pauseVideo) {
-            console.log('Player not ready or pauseVideo not available.');
-            return;
-        }
+searchButton.addEventListener('click', searchVideos);
+submitButton.addEventListener('click', submitTranscription);
+rewindButton.addEventListener('click', handleRewind);
+playStopButton.addEventListener('click', handlePlayStop);
 
-        const pauseDelay = parseInt(pauseDelaySelect.value);
-        const playerState = youtubePlayer.getPlayerState();
-        console.log(`Pause Delay: ${pauseDelay}, Player State: ${playerState}, Pause Delay Active: ${pauseDelayActive}`);
+// Handle typing in transcription input
+transcriptionInput.addEventListener('input', function() {
+    console.log('Input detected in transcription box.');
+    if (!playerReady || !youtubePlayer || !youtubePlayer.pauseVideo) {
+        console.log('Player not ready or pauseVideo not available.');
+        return;
+    }
+
+    const pauseDelay = parseInt(pauseDelaySelect.value);
+    const playerState = youtubePlayer.getPlayerState();
+    console.log(`Pause Delay: ${pauseDelay}, Player State: ${playerState}, Pause Delay Active: ${pauseDelayActive}`);
+    
+    // Only proceed if video is playing and pause delay > 0
+    if (pauseDelay > 0 && (playerState === YT.PlayerState.PLAYING || pauseDelayActive)) {
+        const currentRate = youtubePlayer.getPlaybackRate();
+        console.log('Pause delay condition met.');
         
-        // Only proceed if video is playing and pause delay > 0
-        if (pauseDelay > 0 && (playerState === YT.PlayerState.PLAYING || pauseDelayActive)) {
-            const currentRate = youtubePlayer.getPlaybackRate();
-            console.log('Pause delay condition met.');
+        if (!pauseDelayActive) {
+            console.log('Activating pause delay - pausing video and showing overlay.');
+            // Technique 1: CSS injection (keep trying)
+            const iframe = document.querySelector('#video-player iframe');
+            if (iframe) {
+                const style = document.createElement('style');
+                style.id = 'ytp-hide-style'; // Give it an ID for easier removal
+                style.textContent = `
+                    .ytp-chrome-top, .ytp-chrome-bottom, 
+                    .ytp-gradient-top, .ytp-gradient-bottom, 
+                    .ytp-pause-overlay, .ytp-endscreen-content {
+                        display: none !important;
+                    }
+                `;
+                try {
+                    iframe.contentDocument.head.appendChild(style);
+                    console.log('Injected CSS to hide controls.');
+                } catch (e) {
+                    console.log('Could not inject styles directly.');
+                }
+            }
             
-            if (!pauseDelayActive) {
-                console.log('Activating pause delay - pausing video and showing overlay.');
-                // Technique 1: CSS injection (keep trying)
+            // Technique 2: Overlay div
+            showPlayerOverlay();
+            
+            youtubePlayer.pauseVideo();
+            pauseDelayActive = true;
+        } else {
+            console.log('Pause delay already active, restarting timer.');
+        }
+        
+        if (typingTimer) {
+            clearTimeout(typingTimer);
+        }
+        
+        typingTimer = setTimeout(() => {
+            console.log('Pause delay timer finished.');
+            if (playerReady && youtubePlayer && youtubePlayer.playVideo) {
+                console.log('Resuming video and hiding overlay.');
+                hidePlayerOverlay();
+                
                 const iframe = document.querySelector('#video-player iframe');
                 if (iframe) {
-                    const style = document.createElement('style');
-                    style.id = 'ytp-hide-style'; // Give it an ID for easier removal
-                    style.textContent = `
-                        .ytp-chrome-top, .ytp-chrome-bottom, 
-                        .ytp-gradient-top, .ytp-gradient-bottom, 
-                        .ytp-pause-overlay, .ytp-endscreen-content {
-                            display: none !important;
-                        }
-                    `;
                     try {
-                        iframe.contentDocument.head.appendChild(style);
-                        console.log('Injected CSS to hide controls.');
-                    } catch (e) {
-                        console.log('Could not inject styles directly.');
-                    }
-                }
-                
-                // Technique 2: Overlay div
-                showPlayerOverlay();
-                
-                youtubePlayer.pauseVideo();
-                pauseDelayActive = true;
-            } else {
-                console.log('Pause delay already active, restarting timer.');
-            }
-            
-            if (typingTimer) {
-                clearTimeout(typingTimer);
-            }
-            
-            typingTimer = setTimeout(() => {
-                console.log('Pause delay timer finished.');
-                if (playerReady && youtubePlayer && youtubePlayer.playVideo) {
-                    console.log('Resuming video and hiding overlay.');
-                    hidePlayerOverlay();
-                    
-                    const iframe = document.querySelector('#video-player iframe');
-                    if (iframe) {
-                        try {
-                            const style = iframe.contentDocument.getElementById('ytp-hide-style');
-                            if (style) {
-                                style.remove();
-                                console.log('Removed injected CSS.');
-                            }
-                        } catch (e) {
-                            console.log('Could not remove styles directly.');
+                        const style = iframe.contentDocument.getElementById('ytp-hide-style');
+                        if (style) {
+                            style.remove();
+                            console.log('Removed injected CSS.');
                         }
+                    } catch (e) {
+                        console.log('Could not remove styles directly.');
                     }
-                    
-                    const rewindSeconds = parseFloat(rewindTimeSelect.value);
-                    if (rewindSeconds > 0) {
-                        const currentTime = youtubePlayer.getCurrentTime();
-                        const newTime = Math.max(0, currentTime - rewindSeconds);
-                        youtubePlayer.seekTo(newTime, true);
-                    }
-                    
-                    youtubePlayer.playVideo();
-                    youtubePlayer.setPlaybackRate(currentRate);
-                    pauseDelayActive = false;
                 }
-            }, pauseDelay * 1000);
-        }
-    });
-}
-if (searchInput) {
-    searchInput.addEventListener('keyup', function(event) {
-        if (event.key === 'Enter') {
-            searchVideos();
-        }
-    });
-}
+                
+                const rewindSeconds = parseFloat(rewindTimeSelect.value);
+                if (rewindSeconds > 0) {
+                    const currentTime = youtubePlayer.getCurrentTime();
+                    const newTime = Math.max(0, currentTime - rewindSeconds);
+                    youtubePlayer.seekTo(newTime, true);
+                }
+                
+                youtubePlayer.playVideo();
+                youtubePlayer.setPlaybackRate(currentRate);
+                pauseDelayActive = false;
+            }
+        }, pauseDelay * 1000);
+    }
+});
+
+// Also trigger search on Enter key in search input
+searchInput.addEventListener('keyup', function(event) {
+    if (event.key === 'Enter') {
+        searchVideos();
+    }
+});
 
 // Handle waveform click for seeking
-const verticalWaveform = document.querySelector('.vertical-waveform');
-if (verticalWaveform) {
-    verticalWaveform.addEventListener('click', (e) => {
-        if (youtubePlayer && youtubePlayer.seekTo) {
-            const container = e.currentTarget;
-            const bounds = container.getBoundingClientRect();
-            const relativeY = e.clientY - bounds.top;
-            const percentage = 1 - (relativeY / bounds.height);
-            
-            // Get video duration and calculate target time
-            const duration = youtubePlayer.getDuration();
-            const targetTime = duration * percentage;
-            
-            // Seek to the target time
-            youtubePlayer.seekTo(targetTime, true);
-            
-            // Update progress overlay immediately
-            const overlay = document.querySelector('.progress-overlay');
-            if (overlay) {
-                overlay.style.height = `${percentage * 100}%`;
-            }
+document.querySelector('.vertical-waveform').addEventListener('click', (e) => {
+    if (youtubePlayer && youtubePlayer.seekTo) {
+        const container = e.currentTarget;
+        const bounds = container.getBoundingClientRect();
+        const relativeY = e.clientY - bounds.top;
+        const percentage = 1 - (relativeY / bounds.height);
+        
+        // Get video duration and calculate target time
+        const duration = youtubePlayer.getDuration();
+        const targetTime = duration * percentage;
+        
+        // Seek to the target time
+        youtubePlayer.seekTo(targetTime, true);
+        
+        // Update progress overlay immediately
+        const overlay = document.querySelector('.progress-overlay');
+        if (overlay) {
+            overlay.style.height = `${percentage * 100}%`;
         }
-    });
+    }
+});
 
-    // Handle waveform hover for time display
-    verticalWaveform.addEventListener('mousemove', (e) => {
-        if (youtubePlayer && youtubePlayer.getDuration) {
-            const container = e.currentTarget;
-            const bounds = container.getBoundingClientRect();
-            const relativeY = e.clientY - bounds.top;
-            const percentage = 1 - (relativeY / bounds.height);
-            const duration = youtubePlayer.getDuration();
-            const time = duration * percentage;
-            
-            const minutes = Math.floor(time / 60);
-            const seconds = Math.floor(time % 60);
-            
-            const timeline = document.querySelector('.waveform-timeline');
-            if (timeline) {
-                timeline.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                timeline.style.top = `${e.clientY - bounds.top - 10}px`;
-            }
+// Handle waveform hover for time display
+document.querySelector('.vertical-waveform').addEventListener('mousemove', (e) => {
+    if (youtubePlayer && youtubePlayer.getDuration) {
+        const container = e.currentTarget;
+        const bounds = container.getBoundingClientRect();
+        const relativeY = e.clientY - bounds.top;
+        const percentage = 1 - (relativeY / bounds.height);
+        const duration = youtubePlayer.getDuration();
+        const time = duration * percentage;
+        
+        const minutes = Math.floor(time / 60);
+        const seconds = Math.floor(time % 60);
+        
+        const timeline = document.querySelector('.waveform-timeline');
+        if (timeline) {
+            timeline.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            timeline.style.top = `${e.clientY - bounds.top - 10}px`;
         }
-    });
-}
+    }
+});
 
 // Update waveform progress
 function updateWaveformProgress() {
@@ -714,8 +710,7 @@ async function submitTranscription() {
             },
             body: JSON.stringify({
                 video_id: currentVideoId,
-                user_transcription: userTranscription,
-                language: currentLanguage
+                user_transcription: userTranscription
             })
         });
         
@@ -798,10 +793,7 @@ async function preloadAndLoadVideo(videoId, title) {
         const response = await fetch('/api/preload-transcript', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                video_id: videoId,
-                language: currentLanguage
-            })
+            body: JSON.stringify({ video_id: videoId })
         });
         const data = await response.json();
         if (!response.ok || !data.success) {
@@ -815,148 +807,16 @@ async function preloadAndLoadVideo(videoId, title) {
     }
 }
 
-function showHomeUser() {
-    history.pushState({}, '', '/home-user');
-    showSearchContent();
-}
-
-function showSearchContent() {
-    // Exibe a área de busca e esconde cards de teste/plano
-    const searchContainer = document.querySelector('.search-container');
-    if (searchContainer) {
-        Array.from(searchContainer.children).forEach(child => {
-            child.classList.remove('d-none');
-        });
-    }
-    const homeTestsContainer = document.getElementById('home-tests-container');
-    if (homeTestsContainer) homeTestsContainer.style.display = 'none';
-    const plansBox = document.getElementById('plans-box');
-    if (plansBox) plansBox.style.display = 'none';
-    document.getElementById('video-and-transcription-section').style.display = 'none';
-}
-
-// Função para esconder a barra de pesquisa completamente
-function hideSearchBar() {
-    // Oculta diretamente o card de busca (contém a .card-header e .card-body)
-    const searchCard = document.querySelector('.card.mb-4');
-    if (searchCard) {
-        searchCard.style.display = 'none';
-    }
-}
-
-function showPlansBox() {
-    let plansBox = document.getElementById('plans-box');
-    if (!plansBox) {
-        plansBox = document.createElement('div');
-        plansBox.id = 'plans-box';
-        plansBox.className = 'plans-section mt-5 mb-5'; // Margem superior e inferior
-        const main = document.querySelector('main') || document.querySelector('.main-content') || document.body;
-        main.appendChild(plansBox);
-    }
-    plansBox.innerHTML = `
-        <div style="background:#8a9bac;border:5px solid #fff;border-radius:32px;margin:24px auto;max-width:900px;width:90vw;min-width:320px;padding:32px 16px 24px 16px;text-align:center;color:#fff;font-size:1.6rem;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
-            <div style="font-size:2.4rem;font-weight:500;margin-bottom:12px;letter-spacing:0.04em;display:flex;align-items:center;justify-content:center;">
-                <span style="flex:1;border-top:3px solid #fff;margin-right:16px;"></span>
-                <span style="flex:0 0 auto;padding:0 16px;">Plans</span>
-                <span style="flex:1;border-top:3px solid #fff;margin-left:16px;"></span>
-            </div>
-            <div style="margin-bottom:24px;">Make unlimited vídeo transcriptions with our tool for $9.99/month. <b><a href='/plans' style='color:#fff;text-decoration:underline;font-weight:600;'>Sign!</a></b></div>
-            <div><b><a href='/plans' style='color:#fff;text-decoration:underline;font-weight:600;'>Cancel</a></b> the plan whenever you want!</div>
-        </div>
-    `;
-    plansBox.style.display = '';
-}
-
-function hidePlansBox() {
-    const plansBox = document.getElementById('plans-box');
-    if (plansBox) {
-        plansBox.style.display = 'none';
-    }
-}
-
-window.showHomeContent = function() {
-    // Parar o vídeo quando navegar para a página home
-    stopVideoPlayback();
-    
-    // Esconde a área de busca e exibe cards de teste/plano
-    hideSearchBar();
-    document.getElementById('video-and-transcription-section').style.display = 'none';
-    
-    const homeTestsContainerId = 'home-tests-container';
-    let homeTestsContainer = document.getElementById(homeTestsContainerId);
-    if (!homeTestsContainer) {
-        homeTestsContainer = document.createElement('div');
-        homeTestsContainer.id = homeTestsContainerId;
-        homeTestsContainer.className = 'row justify-content-center my-4';
-        const main = document.querySelector('main') || document.querySelector('.main-content') || document.body;
-        main.appendChild(homeTestsContainer);
-    }
-    homeTestsContainer.innerHTML = '';
-    const testVideos = [
-        { num: 1, title: 'Test Video 1', thumb: 'https://img.youtube.com/vi/h2rR77VsF5c/hqdefault.jpg', route: '/test-1' },
-        { num: 2, title: 'Test Video 2', thumb: 'https://img.youtube.com/vi/27p8Eup4KQU/hqdefault.jpg', route: '/test-2' },
-        { num: 3, title: 'Test Video 3', thumb: 'https://img.youtube.com/vi/jFCFqjovH3s/hqdefault.jpg', route: '/test-3' }
-    ];
-    testVideos.forEach(video => {
-        const col = document.createElement('div');
-        col.className = 'col-md-4 mb-3';
-        col.innerHTML = `
-            <div class="card video-card h-100" style="cursor:pointer;">
-                <img src="${video.thumb}" class="card-img-top video-thumbnail" alt="${video.title}">
-                <div class="card-body text-center">
-                    <h5 class="card-title">${video.title}</h5>
-                </div>
-            </div>
-        `;
-        col.addEventListener('click', () => {
-            homeTestsContainer.innerHTML = '';
-            homeTestsContainer.style.display = 'none';
-            history.pushState({}, '', video.route);
-            showTest(video.num);
-        });
-        homeTestsContainer.appendChild(col);
-    });
-    homeTestsContainer.style.display = '';
-    
-    // Exibe a seção de planos
-    showPlansBox();
-}
-
+// SPA Routing logic
 function showHome() {
-    history.pushState({}, '', '/home');
-    showHomeContent();
+    history.pushState({}, '', '/');
+    document.getElementById('video-and-transcription-section').style.display = 'none';
+    // Opcional: Limpar vídeo/transcrição se quiser
 }
 
 function showWatch(videoId, title) {
-    // Se o vídeo atual for diferente do novo, pare o atual
-    if (currentVideoId && currentVideoId !== videoId) {
-        stopVideoPlayback();
-    }
-    
     history.pushState({}, '', '/watch?v=' + videoId);
     document.getElementById('video-and-transcription-section').style.display = '';
-    preloadAndLoadVideo(videoId, title);
-}
-
-// NOVO: Lógica para rotas /test-1 e /test-2
-function showTest(testNum) {
-    // Parar qualquer vídeo que esteja tocando
-    stopVideoPlayback();
-    
-    // Esconde barra de busca
-    hideSearchBar();
-    document.getElementById('video-and-transcription-section').style.display = '';
-    let videoId, title;
-    if (testNum === 1) {
-        videoId = 'h2rR77VsF5c';
-        title = 'Test Video 1';
-    } else if (testNum === 2) {
-        videoId = '27p8Eup4KQU';
-        title = 'Test Video 2';
-    } else if (testNum === 3) {
-        videoId = 'jFCFqjovH3s';
-        title = 'Test Video 3';
-    }
     preloadAndLoadVideo(videoId, title);
 }
 
@@ -968,166 +828,13 @@ if (owlLogoLink) owlLogoLink.addEventListener('click', function(e) { e.preventDe
 const siteTitle = document.getElementById('site-title');
 if (siteTitle) siteTitle.addEventListener('click', showHome);
 
-// Função para parar a reprodução do vídeo
-function stopVideoPlayback() {
-    if (youtubePlayer && youtubePlayer.pauseVideo) {
-        youtubePlayer.pauseVideo();
-        console.log('Video playback stopped due to navigation');
-    }
-}
-
-// Adiciona event listeners aos links na barra superior
-function setupNavLinks() {
-    // Link para Plans
-    const plansLink = document.getElementById('plans-link');
-    if (plansLink) {
-        plansLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            // Parar o vídeo
-            stopVideoPlayback();
-            history.pushState({}, '', '/plans');
-            // Esconder elementos conforme necessário
-            hideSearchBar();
-            document.getElementById('video-and-transcription-section').style.display = 'none';
-            const homeTestsContainer = document.getElementById('home-tests-container');
-            if (homeTestsContainer) homeTestsContainer.style.display = 'none';
-            hidePlansBox();
-        });
-    }
-}
-
-// SPA Routing logic
+// Suporte ao botão voltar do navegador
 window.addEventListener('popstate', function() {
-    // Parar o vídeo quando o usuário navega usando os botões do navegador
-    stopVideoPlayback();
-    
-    if (location.pathname === '/' || 
-        location.pathname === '/home' || 
-        location.pathname === '/test-1' || 
-        location.pathname === '/test-2' || 
-        location.pathname === '/test-3' || 
-        location.pathname === '/plans') {
-        
-        // Esconde a barra de pesquisa em todas as rotas protegidas
-        hideSearchBar();
-    }
-    
-    // Esconde a caixa de planos por padrão
-    hidePlansBox();
-    
     if (location.pathname === '/' || location.pathname === '/home') {
-        showHomeContent();
-    } else if (location.pathname === '/home-user') {
-        showSearchContent();
-    } else if (location.pathname === '/plans') {
-        // Exibe a caixa de planos na página de planos
-        showPlansBox();
-        document.getElementById('video-and-transcription-section').style.display = 'none';
+        showHome();
     } else if (location.pathname.startsWith('/watch')) {
         const params = new URLSearchParams(location.search);
         const videoId = params.get('v');
         if (videoId) showWatch(videoId, '');
-    } else if (['/test-1', '/test-2', '/test-3', '/plans'].includes(location.pathname)) {
-        hideSearchBar();
-        document.getElementById('video-and-transcription-section').style.display = 'none';
-        const homeTestsContainer = document.getElementById('home-tests-container');
-        if (homeTestsContainer) homeTestsContainer.style.display = 'none';
-        
-        // Exibe o conteúdo específico se for teste
-        if (location.pathname === '/test-1') showTest(1);
-        if (location.pathname === '/test-2') showTest(2);
-        if (location.pathname === '/test-3') showTest(3);
     }
 });
-
-window.addEventListener('DOMContentLoaded', function() {
-    // Initialize language switcher
-    initializeLanguageSwitcher();
-    
-    // Initialize navigation
-    initializeNavigation();
-    
-    // Initialize search functionality
-    initializeSearch();
-    
-    // Initialize video player
-    initializeVideoPlayer();
-    
-    // Initialize test video cards
-    initializeTestVideos();
-    
-    // Esconde a barra de pesquisa em todas as rotas protegidas
-    if (location.pathname === '/' || 
-        location.pathname === '/home' || 
-        location.pathname === '/test-1' || 
-        location.pathname === '/test-2' || 
-        location.pathname === '/test-3' || 
-        location.pathname === '/plans') {
-        
-        hideSearchBar();
-    }
-    
-    // Esconde a caixa de planos por padrão
-    hidePlansBox();
-    
-    if (location.pathname === '/' || location.pathname === '/home') {
-        showHomeContent();
-    } else if (location.pathname === '/home-user') {
-        showSearchContent();
-    } else if (location.pathname === '/plans') {
-        // Exibe a caixa de planos na página de planos
-        showPlansBox();
-        document.getElementById('video-and-transcription-section').style.display = 'none';
-    } else if (['/test-1', '/test-2', '/test-3', '/plans'].includes(location.pathname)) {
-        hideSearchBar();
-        document.getElementById('video-and-transcription-section').style.display = 'none';
-        const homeTestsContainer = document.getElementById('home-tests-container');
-        if (homeTestsContainer) homeTestsContainer.style.display = 'none';
-        
-        // Exibe o conteúdo específico se for teste
-        if (location.pathname === '/test-1') showTest(1);
-        if (location.pathname === '/test-2') showTest(2);
-        if (location.pathname === '/test-3') showTest(3);
-    }
-});
-
-// Adicionar função para gerenciar idiomas
-function initializeLanguageSwitcher() {
-    // Definir o idioma armazenado como inicial
-    const dropdownToggle = document.querySelector('#languageDropdown');
-    if (dropdownToggle) {
-        dropdownToggle.textContent = currentLanguage.toUpperCase();
-    }
-    
-    // Adicionar event listeners para os itens do dropdown
-    const languageItems = document.querySelectorAll('.dropdown-item[data-lang]');
-    languageItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Atualizar idioma atual
-            const newLang = this.getAttribute('data-lang');
-            currentLanguage = newLang;
-            
-            // Salvar preferência no localStorage
-            localStorage.setItem('preferredLanguage', newLang);
-            
-            // Atualizar texto do dropdown
-            if (dropdownToggle) {
-                dropdownToggle.textContent = newLang.toUpperCase();
-            }
-            
-            // Atualizar classes active
-            languageItems.forEach(langItem => {
-                if (langItem.getAttribute('data-lang') === newLang) {
-                    langItem.classList.add('active');
-                } else {
-                    langItem.classList.remove('active');
-                }
-            });
-            
-            // Aqui podemos adicionar tradução de textos da interface
-            // updateUILanguage(newLang);
-        });
-    });
-}

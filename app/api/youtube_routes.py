@@ -45,9 +45,7 @@ def video_details_route(video_id):
 @youtube_bp.route('/transcript/<video_id>', methods=['GET'])
 def transcript_route(video_id):
     try:
-        # Obter o idioma preferido do parâmetro da requisição, padrão é 'en'
-        language_preference = request.args.get('language', 'en')
-        transcript, timestamps = get_video_transcript(video_id, language_preference)
+        transcript, timestamps = get_video_transcript(video_id)
         return jsonify({
             'transcript': transcript,
             'timestamps': timestamps
@@ -59,7 +57,6 @@ def transcript_route(video_id):
 def preload_transcript_route():
     data = request.get_json()
     video_id = data.get('video_id')
-    language_preference = data.get('language', 'en')
     if not video_id:
         return jsonify({'error': 'Video ID is required'}), 400
     try:
@@ -67,7 +64,7 @@ def preload_transcript_route():
         if cached:
             transcript, timestamps = cached
         else:
-            transcript, timestamps = get_video_transcript(video_id, language_preference)
+            transcript, timestamps = get_video_transcript(video_id)
             save_to_cache(video_id, transcript, timestamps)
         return jsonify({'success': True})
     except Exception as e:
@@ -78,7 +75,6 @@ def validate_transcription_route():
     data = request.get_json()
     video_id = data.get('video_id')
     user_transcription = data.get('user_transcription')
-    language_preference = data.get('language', 'en')
     if not video_id or not user_transcription:
         return jsonify({'error': 'Video ID and user transcription are required'}), 400
     try:
@@ -86,7 +82,7 @@ def validate_transcription_route():
         if cached:
             actual_transcript, timestamps = cached
         else:
-            actual_transcript, timestamps = get_video_transcript(video_id, language_preference)
+            actual_transcript, timestamps = get_video_transcript(video_id)
             save_to_cache(video_id, actual_transcript, timestamps)
         if isinstance(actual_transcript, str) and not timestamps:
             return jsonify({'error': actual_transcript}), 400

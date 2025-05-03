@@ -101,14 +101,13 @@ def get_video_details(video_id):
         current_app.logger.error(f"YouTube API error: {str(e)}")
         raise Exception("Failed to get video details")
 
-def get_video_transcript(video_id, language_preference='en', debug_mode=True):
+def get_video_transcript(video_id, debug_mode=True):
     """
     Get video transcript using the YouTube Transcript API.
     Returns a tuple of (text, timestamps) where timestamps is a list of start times for each word.
     
     Args:
         video_id (str): YouTube video ID
-        language_preference (str): Preferred language for the transcript ('en', 'es', etc.)
         debug_mode (bool): If True, logs detailed debug information
     """
     import re
@@ -144,28 +143,20 @@ def get_video_transcript(video_id, language_preference='en', debug_mode=True):
         
         return transcript_text.strip(), timestamps
     
-    log_debug(f">>> INICIANDO BUSCA DE TRANSCRIÇÃO PARA VÍDEO {video_id} (Idioma preferido: {language_preference}) <<<")
+    log_debug(f">>> INICIANDO BUSCA DE TRANSCRIÇÃO PARA VÍDEO {video_id} <<<")
     
     # VERIFICAÇÃO DE TRANSCRIÇÃO ARMAZENADA EM CACHE
     # Isso permite criar um sistema de cache de transcrições para desenvolvedores
     try:
         cache_dir = 'transcript_cache'
         os.makedirs(cache_dir, exist_ok=True)
-        cache_file = os.path.join(cache_dir, f"{video_id}_{language_preference}.json")
+        cache_file = os.path.join(cache_dir, f"{video_id}.json")
         
         if os.path.exists(cache_file):
-            log_debug(f"Cache encontrado para {video_id} no idioma {language_preference}")
+            log_debug(f"Cache encontrado para {video_id}")
             with open(cache_file, 'r', encoding='utf-8') as f:
                 cache_data = json.load(f)
                 return cache_data['transcript'], cache_data['timestamps']
-        else:
-            # Tenta cache genérico se não encontrar específico do idioma
-            generic_cache_file = os.path.join(cache_dir, f"{video_id}.json")
-            if os.path.exists(generic_cache_file):
-                log_debug(f"Cache genérico encontrado para {video_id}")
-                with open(generic_cache_file, 'r', encoding='utf-8') as f:
-                    cache_data = json.load(f)
-                    return cache_data['transcript'], cache_data['timestamps']
     except Exception as e:
         log_debug(f"Erro ao verificar cache: {str(e)}")
     
@@ -213,71 +204,13 @@ def get_video_transcript(video_id, language_preference='en', debug_mode=True):
     # Pode ter melhor compatibilidade com ambientes restritos
     try:
         log_debug("Método simplificado para produção")
+        # Tenta abordagem direta (menos suscetível a problemas)
+        languages_to_try = ['', 'en', 'en-US', 'pt', 'pt-BR', 'es']
         
-        # Define a ordem de preferência de idiomas baseada na escolha do usuário
-        if language_preference == 'en':
-            languages_to_try = ['en', 'en-US', 'en-GB', 'en-CA', 'en-AU', '', 'en-IN', 'en-IE']
-        elif language_preference == 'es':
-            languages_to_try = ['es', 'es-ES', 'es-MX', 'es-AR', 'es-CO', '', 'es-US', 'es-CL']
-        else:
-            # Caso outros idiomas sejam adicionados no futuro, formato padrão
-            languages_to_try = [language_preference, f"{language_preference}-*", '']
-        
-        log_debug(f"Ordem de preferência de idiomas: {languages_to_try}")
-        
-        transcript_results = {}
-        found_preferred_language = False
-        
-        # Primeiro tenta obter todas as transcrições disponíveis
-        try:
-            available_transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
-            log_debug(f"Transcrições disponíveis: {[t.language_code for t in available_transcripts]}")
-            
-            # Procura por uma transcrição no idioma preferido ou próximo
-            for lang_code in languages_to_try:
-                if not lang_code:  # Pula string vazia
-                    continue
-                    
-                has_wildcard = '*' in lang_code
-                for transcript in available_transcripts:
-                    current_lang = transcript.language_code
-                    
-                    # Verifica se é o idioma exato ou se corresponde a um padrão com wildcard
-                    if current_lang == lang_code or (has_wildcard and current_lang.startswith(lang_code.replace('*', ''))):
-                        log_debug(f"Encontrada transcrição no idioma preferido: {current_lang}")
-                        transcript_data = transcript.fetch()
-                        transcript_text, timestamps = process_transcript(transcript_data)
-                        
-                        # Armazena em cache para uso futuro
-                        try:
-                            cache_data = {
-                                'transcript': transcript_text,
-                                'timestamps': timestamps,
-                                'language': current_lang
-                            }
-                            with open(cache_file, 'w', encoding='utf-8') as f:
-                                json.dump(cache_data, f)
-                            log_debug(f"Transcrição armazenada em cache (idioma: {current_lang})")
-                        except Exception as cache_err:
-                            log_debug(f"Não foi possível armazenar em cache: {str(cache_err)}")
-                        
-                        return transcript_text, timestamps
-            
-            # Se nenhum idioma preferido foi encontrado, prossiga com o método antigo
-            log_debug("Nenhuma transcrição no idioma preferido encontrada")
-            
-        except Exception as e:
-            log_debug(f"Falha ao listar transcrições disponíveis: {str(e)}")
-        
-        # Tenta o método antigo como fallback
         for lang in languages_to_try:
             try:
-                if not lang:  # String vazia será tratada como padrão automático
-                    lang_param = None
-                    log_debug("Tentando idioma: padrão automático")
-                else:
-                    lang_param = [lang]
-                    log_debug(f"Tentando idioma: {lang}")
+                lang_param = [lang] if lang else None
+                log_debug(f"Tentando idioma: {lang if lang else 'default'}")
                 
                 transcript_data = YouTubeTranscriptApi.get_transcript(
                     video_id, 
@@ -291,8 +224,7 @@ def get_video_transcript(video_id, language_preference='en', debug_mode=True):
                 try:
                     cache_data = {
                         'transcript': transcript_text,
-                        'timestamps': timestamps,
-                        'language': lang if lang else 'default'
+                        'timestamps': timestamps
                     }
                     with open(cache_file, 'w', encoding='utf-8') as f:
                         json.dump(cache_data, f)
