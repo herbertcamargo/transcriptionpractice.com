@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 import os
 from dotenv import load_dotenv
@@ -30,13 +30,16 @@ def create_app(test_config=None):
     # Basic route for testing
     @app.route('/')
     def index():
-        return app.send_static_file('index.html')
+        return send_from_directory('static', 'index.html')
+
+    @app.route('/plans')
+    def plans():
+        return send_from_directory('static', 'index.html')
 
     # Rotas SPA para evitar 404 em refresh
     @app.route('/test-1')
     @app.route('/test-2')
     @app.route('/test-3')
-    @app.route('/plans')
     @app.route('/login')
     @app.route('/home')
     @app.route('/watch')

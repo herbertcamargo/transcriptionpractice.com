@@ -994,24 +994,6 @@ function setupNavLinks() {
             hidePlansBox();
         });
     }
-
-    // Link para Login
-    const loginLink = document.getElementById('login-link');
-    if (loginLink) {
-        loginLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            // Parar o vídeo
-            stopVideoPlayback();
-            history.pushState({}, '', '/login');
-            // Esconder elementos conforme necessário
-            hideSearchBar();
-            document.getElementById('video-and-transcription-section').style.display = 'none';
-            const homeTestsContainer = document.getElementById('home-tests-container');
-            if (homeTestsContainer) homeTestsContainer.style.display = 'none';
-            // Exibir a caixa de planos na página de login
-            showPlansBox();
-        });
-    }
 }
 
 // SPA Routing logic
@@ -1024,8 +1006,7 @@ window.addEventListener('popstate', function() {
         location.pathname === '/test-1' || 
         location.pathname === '/test-2' || 
         location.pathname === '/test-3' || 
-        location.pathname === '/plans' || 
-        location.pathname === '/login') {
+        location.pathname === '/plans') {
         
         // Esconde a barra de pesquisa em todas as rotas protegidas
         hideSearchBar();
@@ -1038,8 +1019,8 @@ window.addEventListener('popstate', function() {
         showHomeContent();
     } else if (location.pathname === '/home-user') {
         showSearchContent();
-    } else if (location.pathname === '/login') {
-        // Exibe a caixa de planos na página de login
+    } else if (location.pathname === '/plans') {
+        // Exibe a caixa de planos na página de planos
         showPlansBox();
         document.getElementById('video-and-transcription-section').style.display = 'none';
     } else if (location.pathname.startsWith('/watch')) {
@@ -1060,11 +1041,20 @@ window.addEventListener('popstate', function() {
 });
 
 window.addEventListener('DOMContentLoaded', function() {
-    // Configurar o seletor de idiomas
-    setupLanguageSelector();
+    // Initialize language switcher
+    initializeLanguageSwitcher();
     
-    // Configurar links de navegação na barra superior
-    setupNavLinks();
+    // Initialize navigation
+    initializeNavigation();
+    
+    // Initialize search functionality
+    initializeSearch();
+    
+    // Initialize video player
+    initializeVideoPlayer();
+    
+    // Initialize test video cards
+    initializeTestVideos();
     
     // Esconde a barra de pesquisa em todas as rotas protegidas
     if (location.pathname === '/' || 
@@ -1072,8 +1062,7 @@ window.addEventListener('DOMContentLoaded', function() {
         location.pathname === '/test-1' || 
         location.pathname === '/test-2' || 
         location.pathname === '/test-3' || 
-        location.pathname === '/plans' || 
-        location.pathname === '/login') {
+        location.pathname === '/plans') {
         
         hideSearchBar();
     }
@@ -1085,8 +1074,8 @@ window.addEventListener('DOMContentLoaded', function() {
         showHomeContent();
     } else if (location.pathname === '/home-user') {
         showSearchContent();
-    } else if (location.pathname === '/login') {
-        // Exibe a caixa de planos na página de login
+    } else if (location.pathname === '/plans') {
+        // Exibe a caixa de planos na página de planos
         showPlansBox();
         document.getElementById('video-and-transcription-section').style.display = 'none';
     } else if (['/test-1', '/test-2', '/test-3', '/plans'].includes(location.pathname)) {
@@ -1103,7 +1092,7 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 
 // Adicionar função para gerenciar idiomas
-function setupLanguageSelector() {
+function initializeLanguageSwitcher() {
     // Definir o idioma armazenado como inicial
     const dropdownToggle = document.querySelector('#languageDropdown');
     if (dropdownToggle) {
