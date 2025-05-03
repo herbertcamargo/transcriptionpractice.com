@@ -1,6 +1,6 @@
 import re
 from typing import Dict, List, Tuple, Union
-from app.services.transcription_correction import Word, TranscriptionComparer
+from app.services.transcription_correction import Word, TranscriptionComparerV4Pro
 
 def normalize_text(text):
     text = re.sub(r'\[.*?\]', '', text)
@@ -24,5 +24,5 @@ def validate_transcription(user_input: str, actual_transcript: str, timestamps: 
     # Create list of Word objects for user input (timestamp 0.0, normalizado)
     user_words = [Word(text=w, timestamp=0.0, normalized=normalize_text(w)) for w in re.findall(r'\b\w+[\w\']*\b', user_input)]
     
-    comparer = TranscriptionComparer()
+    comparer = TranscriptionComparerV4Pro()
     return comparer.compare(user_words, actual_words)
