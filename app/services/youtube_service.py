@@ -29,6 +29,7 @@ requests.Session.request = proxied_request
 
 def get_youtube_client():
     api_key = current_app.config['YOUTUBE_API_KEY']
+    current_app.logger.info(f"[DEBUG] YOUTUBE_API_KEY: {str(api_key)[:6]}... (len={len(str(api_key)) if api_key else 0})")
     return build('youtube', 'v3', developerKey=api_key)
 
 def search_videos(query, max_results=10):
@@ -55,7 +56,7 @@ def search_videos(query, max_results=10):
             
         return videos
     except HttpError as e:
-        current_app.logger.error(f"YouTube API error: {str(e)}")
+        current_app.logger.error(f"[DEBUG] YouTube API error: {str(e)} | content: {getattr(e, 'content', None)}")
         raise Exception("Failed to search for videos")
 
 def get_video_details(video_id):
