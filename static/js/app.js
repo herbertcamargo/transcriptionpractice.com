@@ -585,8 +585,8 @@ function loadVideo(videoId, title) {
     
     // Create new YouTube player with minimal options
     youtubePlayer = new YT.Player('video-player', {
-        height: '360',
-        width: '640',
+        height: '100%',
+        width: '100%',
         videoId: videoId,
         playerVars: {
             'playsinline': 1,
@@ -598,12 +598,14 @@ function loadVideo(videoId, title) {
                 playerReady = true;
                 // Ensure the player is fully interactive after it's ready
                 ensurePlayerInteractivity();
-                
                 // Set size after player is ready to ensure it's visible
                 const iframe = event.target.getIframe();
                 if (iframe) {
-                    iframe.style.height = '600px';
                     iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.position = 'absolute';
+                    iframe.style.top = '0';
+                    iframe.style.left = '0';
                 }
             },
             'onStateChange': function(event) {
