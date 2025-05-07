@@ -59,7 +59,11 @@ app.get('/api/transcript', async (req, res) => {
     }
 
     // Get transcription using youtube-transcript package
-    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId)
+      .catch(error => {
+        console.error('YouTube transcript error:', error);
+        throw new Error('Failed to fetch transcript from YouTube');
+      });
     
     if (!transcript || transcript.length === 0) {
       return res.status(404).json({ success: false, error: 'No transcript found for this video' });
@@ -89,7 +93,12 @@ app.get('/api/transcript', async (req, res) => {
       return res.status(404).json({ success: false, error: 'No transcripts available for this video' });
     }
     
-    return res.status(500).json({ success: false, error: error.message || 'Failed to fetch transcript' });
+    // Make sure to always return a JSON response, never HTML
+    return res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Failed to fetch transcript',
+      details: error.toString()
+    });
   }
 });
 

@@ -49,10 +49,10 @@ function createPlayerOverlay() {
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 255, 0.1); /* TEMPORARY: Blue tint for debugging */
+        background: rgba(0, 0, 0, 0); /* Transparent background */
         z-index: 1000;
         display: none;
-        pointer-events: all;
+        pointer-events: none; /* Allow clicks to pass through to the video player */
     `;
     
     // Get the immediate container of the video player element
@@ -610,14 +610,11 @@ async function loadVideo(videoId, title) {
         }
     });
     
-    // Add CSS for hiding controls during pause delay
-    const style = document.createElement('style');
-    style.textContent = `
-        #video-player.hide-controls iframe {
-            pointer-events: none;
-        }
-    `;
-    document.head.appendChild(style);
+    // Remove the overlay and styles that prevent interaction
+    const existingOverlay = document.getElementById('player-overlay');
+    if (existingOverlay) {
+        existingOverlay.remove();
+    }
     
     // Reset transcription and button state
     transcriptionInput.value = '';
@@ -657,23 +654,11 @@ function onPlayerReady(event) {
     playerReady = true;
     pauseDelayActive = false;
     
-    // Add custom styles to hide suggested videos
-    const iframe = document.querySelector('#video-player iframe');
-    if (iframe) {
-        const style = document.createElement('style');
-        style.textContent = `
-            .ytp-pause-overlay { display: none !important; }
-            .ytp-scroll-min { display: none !important; }
-        `;
-        try {
-            iframe.contentDocument.head.appendChild(style);
-        } catch (e) {
-            console.log('Could not inject styles directly - cross-origin restriction');
-        }
-    }
+    // No need to add custom styles that might interfere with YouTube controls
+    // Let the user interact with the player directly
     
-    // Create overlay in case we need it
-    createPlayerOverlay();
+    // Make sure no overlay is active
+    hidePlayerOverlay();
 }
 
 function onPlayerStateChange(event) {
@@ -763,6 +748,18 @@ async function submitTranscription() {
     try {
         // Use the new Node.js API endpoint
         const response = await fetch(`/api/transcript?video_id=${currentVideoId}`);
+        
+        // Check for HTML response (error page)
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.indexOf('text/html') !== -1) {
+            throw new Error('Received HTML instead of JSON. Server might be returning an error page.');
+        }
+        
+        // Handle non-200 status codes before parsing JSON
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
 
         if (!data.success) {
@@ -840,24 +837,12 @@ window.addEventListener('beforeunload', () => {
 // Nova função para pré-carregar a transcrição antes de carregar o vídeo
 async function preloadAndLoadVideo(videoId, title) {
     try {
-        // Chama o backend para pré-carregar a transcrição
-        const response = await fetch('/api/preload-transcript', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                video_id: videoId,
-                language: currentLanguage
-            })
-        });
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-            alert('Failed to preload transcript: ' + (data.error || 'Unknown error'));
-            return;
-        }
-        // Só carrega o vídeo se a transcrição foi pré-carregada
+        // Skip the preloading step that's causing issues
+        // and directly load the video
         loadVideo(videoId, title);
     } catch (err) {
-        alert('Failed to preload transcript: ' + err.message);
+        console.error('Error loading video:', err);
+        alert('Failed to load video: ' + err.message);
     }
 }
 
