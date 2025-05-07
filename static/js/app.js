@@ -624,14 +624,6 @@ async function loadVideo(videoId, title) {
     // Show video section
     videoSection.classList.remove('d-none');
     resultsSection.classList.add('d-none');
-
-    // Scroll to video section immediately
-    const mainContent = document.querySelector('.video-and-transcription');
-    if (mainContent) {
-        mainContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-        videoSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
 }
 
 // Generate waveform data from video audio
@@ -836,14 +828,8 @@ window.addEventListener('beforeunload', () => {
 
 // Nova função para pré-carregar a transcrição antes de carregar o vídeo
 async function preloadAndLoadVideo(videoId, title) {
-    try {
-        // Skip the preloading step that's causing issues
-        // and directly load the video
-        loadVideo(videoId, title);
-    } catch (err) {
-        console.error('Error loading video:', err);
-        alert('Failed to load video: ' + err.message);
-    }
+    // Directly load the video without any preloading
+    loadVideo(videoId, title);
 }
 
 function showHomeUser() {
