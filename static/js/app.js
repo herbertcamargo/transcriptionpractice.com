@@ -573,8 +573,8 @@ function loadVideo(videoId, title) {
     
     // Create new YouTube player with minimal options
     youtubePlayer = new YT.Player('video-player', {
-        height: '390',
-        width: '640',
+        height: '600',
+        width: '100%',
         videoId: videoId,
         playerVars: {
             'playsinline': 1,
@@ -586,6 +586,13 @@ function loadVideo(videoId, title) {
                 playerReady = true;
                 // Ensure the player is fully interactive after it's ready
                 ensurePlayerInteractivity();
+                
+                // Set size after player is ready to ensure it's visible
+                const iframe = event.target.getIframe();
+                if (iframe) {
+                    iframe.style.height = '600px';
+                    iframe.style.width = '100%';
+                }
             },
             'onStateChange': function(event) {
                 // Only update play/stop button state
@@ -693,9 +700,9 @@ async function submitTranscription() {
         
         console.log("Attempting to fetch transcript from original Flask endpoint...");
         try {
-            console.log(`Requesting: /transcript?video_id=${currentVideoId}`);
-            // Use relative URL, not absolute
-            response = await fetch(`/transcript?video_id=${currentVideoId}`);
+            console.log(`Requesting: /transcript?video_id=${currentVideoId}&language=${currentLanguage}`);
+            // Use relative URL, not absolute, and include language
+            response = await fetch(`/transcript?video_id=${currentVideoId}&language=${currentLanguage}`);
             console.log(`Flask endpoint response status: ${response.status}`);
             
             if (response.ok) {
@@ -706,6 +713,7 @@ async function submitTranscription() {
                     data = await response.json();
                     if (data && data.transcript) {
                         console.log("Successfully retrieved transcript from Flask endpoint");
+                        console.log(`Transcript language: ${data.language || 'not specified'}`);
                     } else {
                         console.warn("Flask endpoint returned JSON but no transcript data:", data);
                     }
@@ -727,9 +735,9 @@ async function submitTranscription() {
         if (!data || !data.transcript) {
             console.log("Flask endpoint failed, trying Node.js endpoint...");
             try {
-                console.log(`Requesting: /api/transcript?video_id=${currentVideoId}`);
-                // Use relative URL, not absolute
-                response = await fetch(`/api/transcript?video_id=${currentVideoId}`);
+                console.log(`Requesting: /api/transcript?video_id=${currentVideoId}&language=${currentLanguage}`);
+                // Use relative URL, not absolute, and include language
+                response = await fetch(`/api/transcript?video_id=${currentVideoId}&language=${currentLanguage}`);
                 console.log(`Node.js endpoint response status: ${response.status}`);
                 
                 if (response.ok) {

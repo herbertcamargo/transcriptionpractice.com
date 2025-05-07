@@ -57,23 +57,38 @@ app.get('/diagnostics', (req, res) => {
 // Transcript API endpoint
 app.get('/api/transcript', async (req, res) => {
   const videoId = req.query.video_id;
+  const language = req.query.language || 'en';
   
   if (!videoId) {
     return res.status(400).json({ success: false, error: 'Video ID is required' });
   }
 
   try {
-    console.log(`Fetching transcript for video: ${videoId}`);
+    console.log(`Fetching transcript for video: ${videoId}, preferred language: ${language}`);
     
     // Get transcription using youtube-transcript package
-    const transcript = await YoutubeTranscript.fetchTranscript(videoId)
-      .catch(error => {
-        console.error('YouTube transcript error:', error);
-        throw new Error('Failed to fetch transcript from YouTube');
-      });
+    let transcript;
+    try {
+      // First try with the requested language
+      transcript = await YoutubeTranscript.fetchTranscript(videoId, { lang: language });
+    } catch (langError) {
+      console.log(`Couldn't find transcript in ${language}, trying with default language...`);
+      try {
+        // If that fails, try with English
+        transcript = await YoutubeTranscript.fetchTranscript(videoId);
+      } catch (defaultError) {
+        console.error('YouTube transcript error:', defaultError);
+        throw new Error('Failed to fetch transcript from YouTube in any language');
+      }
+    }
     
     if (!transcript || transcript.length === 0) {
-      return res.status(404).json({ success: false, error: 'No transcript found for this video' });
+      return res.status(404).json({ 
+        success: false, 
+        error: 'No transcript found for this video',
+        videoId: videoId,
+        requestedLanguage: language
+      });
     }
     
     // Join all the text segments
@@ -85,7 +100,8 @@ app.get('/api/transcript', async (req, res) => {
     return res.json({
       success: true,
       transcript: cleanedText.trim(),
-      language: 'en'
+      language: language,
+      videoId: videoId
     });
   } catch (error) {
     console.error('Transcript error:', error);
@@ -94,7 +110,9 @@ app.get('/api/transcript', async (req, res) => {
     return res.status(500).json({ 
       success: false, 
       error: error.message || 'Failed to fetch transcript',
-      details: error.toString()
+      details: error.toString(),
+      videoId: videoId,
+      requestedLanguage: language
     });
   }
 });
@@ -102,23 +120,37 @@ app.get('/api/transcript', async (req, res) => {
 // Add original Flask-compatible transcript endpoint for backwards compatibility
 app.get('/transcript', async (req, res) => {
   const videoId = req.query.video_id;
+  const language = req.query.language || 'en';
   
   if (!videoId) {
     return res.status(400).json({ error: 'Video ID is required' });
   }
 
   try {
-    console.log(`[Flask-compatible] Fetching transcript for video: ${videoId}`);
+    console.log(`[Flask-compatible] Fetching transcript for video: ${videoId}, preferred language: ${language}`);
     
     // Get transcription using youtube-transcript package
-    const transcript = await YoutubeTranscript.fetchTranscript(videoId)
-      .catch(error => {
-        console.error('[Flask-compatible] YouTube transcript error:', error);
-        throw new Error('Failed to fetch transcript from YouTube');
-      });
+    let transcript;
+    try {
+      // First try with the requested language
+      transcript = await YoutubeTranscript.fetchTranscript(videoId, { lang: language });
+    } catch (langError) {
+      console.log(`Couldn't find transcript in ${language}, trying with default language...`);
+      try {
+        // If that fails, try with English
+        transcript = await YoutubeTranscript.fetchTranscript(videoId);
+      } catch (defaultError) {
+        console.error('[Flask-compatible] YouTube transcript error:', defaultError);
+        throw new Error('Failed to fetch transcript from YouTube in any language');
+      }
+    }
     
     if (!transcript || transcript.length === 0) {
-      return res.status(404).json({ error: 'No transcript found for this video' });
+      return res.status(404).json({ 
+        error: 'No transcript found for this video',
+        videoId: videoId,
+        requestedLanguage: language
+      });
     }
     
     // Join all the text segments
@@ -130,14 +162,17 @@ app.get('/transcript', async (req, res) => {
     // Return in Flask-compatible format (no success field)
     return res.json({
       transcript: cleanedText.trim(),
-      timestamps: transcript.map(item => item.start)
+      timestamps: transcript.map(item => item.start),
+      language: language
     });
   } catch (error) {
     console.error('[Flask-compatible] Transcript error:', error);
     
     // Return in Flask-compatible format
     return res.status(500).json({ 
-      error: error.message || 'Failed to fetch transcript'
+      error: error.message || 'Failed to fetch transcript',
+      videoId: videoId,
+      requestedLanguage: language
     });
   }
 });
