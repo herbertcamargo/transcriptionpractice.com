@@ -483,17 +483,59 @@ function updateStats(data) {
 
 // Reset submit button to initial state
 function resetSubmitButton() {
-    submitButton.textContent = 'Submit Transcription';
-    submitButton.classList.remove('try-again-button');
-    submitButton.classList.add('btn-primary');
-    submitButton.style.backgroundColor = '';
-    submitButton.style.borderColor = '';
-    submitButton.style.color = '';
+    submitButton.innerHTML = 'Submit Transcription';
+    submitButton.disabled = false;
     initializeStats(); // Reset stats to default state
     // Limpa o resultado e mostra a caixa de transcrição
     document.getElementById('result-container').innerHTML = '';
     document.getElementById('result-container').style.display = 'none';
     transcriptionInput.style.display = '';
+}
+
+// Calculate text similarity percentage
+function calculateSimilarity(str1, str2) {
+    if (!str1 || !str2) return 0;
+    
+    // Normalize strings: lowercase, remove punctuation, excess spaces
+    const normalize = (text) => {
+        return text.toLowerCase()
+            .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    };
+    
+    const normalizedStr1 = normalize(str1);
+    const normalizedStr2 = normalize(str2);
+    
+    // Convert to word arrays
+    const words1 = normalizedStr1.split(' ');
+    const words2 = normalizedStr2.split(' ');
+    
+    // Count matching words
+    let matches = 0;
+    for (const word of words1) {
+        if (words2.includes(word)) {
+            matches++;
+            // Remove the word to prevent double counting
+            const index = words2.indexOf(word);
+            if (index > -1) {
+                words2.splice(index, 1);
+            }
+        }
+    }
+    
+    // Calculate similarity
+    return matches / Math.max(words1.length, normalize(str2).split(' ').length);
+}
+
+// Calculate words per minute
+function calculateWPM(text) {
+    const wordCount = text.trim().split(/\s+/).length;
+    const totalTimeInMinutes = (youtubePlayer && youtubePlayer.getDuration) 
+        ? youtubePlayer.getDuration() / 60 
+        : 1; // Default to 1 minute if duration is unknown
+        
+    return Math.round(wordCount / totalTimeInMinutes);
 }
 
 // Load a video
@@ -660,99 +702,103 @@ function onPlayerStateChange(event) {
     }
 }
 
-// Helper to render the merged result
+// Render the results with differences highlighted
 function renderResult(results) {
-    return results.map(entry => {
-        if (entry.type === 'correct') {
-            return `<span class="correct-word">${entry.text}</span>`;
-        } else if (entry.type === 'mistake') {
-            return `<span class="mistake-word">${entry.text}</span>`;
-        } else if (entry.type === 'wrong') {
-            return `<span class="incorrect-word">${entry.text}</span>`;
-        } else if (entry.type === 'missing') {
-            return `<span class="missing-word">${entry.text}</span>`;
-        }
-        return entry.text;
-    }).join(' ');
+    const { userInput, actualTranscript, similarity } = results;
+    
+    // Function to escape HTML
+    const escapeHtml = (text) => {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    };
+    
+    // Get the result container
+    const resultContainer = document.getElementById('result-container');
+    
+    // Create the HTML content
+    let html = `
+        <div class="result-header">
+            <h5>Your transcription - ${similarity}% accuracy</h5>
+        </div>
+        <div class="transcription-comparison">
+            <div class="user-transcription">
+                <h6>Your Input:</h6>
+                <p>${escapeHtml(userInput)}</p>
+            </div>
+            <div class="actual-transcription">
+                <h6>Actual Transcript:</h6>
+                <p>${escapeHtml(actualTranscript)}</p>
+            </div>
+        </div>
+    `;
+    
+    // Update the result container
+    resultContainer.innerHTML = html;
+    
+    // Change the submit button to "Try Again"
+    submitButton.innerHTML = 'Try Again';
 }
 
-// Submit transcription
+// Update the submitTranscription function to use the new API endpoint
 async function submitTranscription() {
-    // If in "Try again" state
-    if (submitButton.classList.contains('try-again-button')) {
-        // Reset to last transcription
-        transcriptionInput.value = lastTranscription;
-        statsContent.innerHTML = '';
-        resetSubmitButton();
-        // Show textarea, hide result
-        transcriptionInput.style.display = '';
-        document.getElementById('result-container').style.display = 'none';
-        return;
-    }
-
-    const userTranscription = transcriptionInput.value.trim();
-    
-    if (!userTranscription) {
-        alert('Please enter your transcription');
-        return;
-    }
-    
     if (!currentVideoId) {
         alert('No video selected');
         return;
     }
-    
+
+    const userInput = transcriptionInput.value.trim();
+    if (!userInput) {
+        alert('Please enter your transcription');
+        return;
+    }
+
+    // Show loading state
+    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+    submitButton.disabled = true;
+
     try {
-        // Show loading state
-        submitButton.disabled = true;
-        submitButton.textContent = 'Validating...';
-        
-        const response = await fetch('/api/validate-transcription', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                video_id: currentVideoId,
-                user_transcription: userTranscription,
-                language: currentLanguage
-            })
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to validate transcription');
-        }
-        
+        // Use the new Node.js API endpoint
+        const response = await fetch(`/api/transcript?video_id=${currentVideoId}`);
         const data = await response.json();
-        
-        // Store the current transcription before showing results
-        lastTranscription = userTranscription;
-        
-        // Render merged color-coded result
-        if (data.results) {
-            const html = renderResult(data.results);
-            document.getElementById('result-container').innerHTML = html;
-            document.getElementById('result-container').style.display = '';
-            transcriptionInput.style.display = 'none';
+
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to get transcript');
         }
+
+        // Process and display results
+        const actualTranscript = data.transcript;
+        lastTranscription = userInput; // Save for potential reuse
+        
+        // Calculate similarity
+        const similarity = calculateSimilarity(userInput, actualTranscript);
+        const formattedSimilarity = (similarity * 100).toFixed(2);
         
         // Update stats
-        updateStats(data);
+        updateStats({
+            wpm: calculateWPM(userInput),
+            similarity: formattedSimilarity
+        });
         
-        // Change button to "Try again" state
-        submitButton.textContent = 'Try again';
-        submitButton.classList.remove('btn-primary');
-        submitButton.classList.add('try-again-button');
-        submitButton.style.backgroundColor = '#fff3cd'; // light yellow
-        submitButton.style.borderColor = '#ffeeba';
-        submitButton.style.color = '#856404';
+        // Render the result with difference highlighting
+        renderResult({
+            userInput: userInput,
+            actualTranscript: actualTranscript,
+            similarity: formattedSimilarity
+        });
+        
+        // Show result container
+        document.getElementById('result-container').style.display = 'block';
         
     } catch (error) {
-        console.error('Error validating transcription:', error);
-        alert(`Failed to validate transcription: ${error.message}`);
+        console.error('Error submitting transcription:', error);
+        alert(`Error: ${error.message}`);
     } finally {
-        submitButton.disabled = false;
+        // Reset button state
+        resetSubmitButton();
     }
 }
 
