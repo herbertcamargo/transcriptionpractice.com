@@ -1,0 +1,6 @@
+@echo off
+echo Installing dependencies...
+C:\Users\herbert.camargo\Downloads\node-v24.0.0-win-x64\npm.cmd install express cors youtube-transcript compression helmet express-rate-limit
+echo Starting Node.js server...
+C:\Users\herbert.camargo\Downloads\node-v24.0.0-win-x64\node.exe server-direct.js
+pause 

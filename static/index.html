@@ -8,6 +8,25 @@
     <link rel="stylesheet" href="/static/css/styles.css">
     <link rel="icon" type="image/svg+xml" href="/static/img/headphone.svg">
     <link rel="icon" type="image/png" href="/static/img/headphone.svg">
+    <style>
+        /* Ensure YouTube iframe is fully interactive */
+        #video-player, #video-player iframe {
+            pointer-events: auto !important;
+            z-index: 10;
+        }
+        
+        /* Prevent any other elements from overlaying the player */
+        .video-section, .ratio {
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Fix for any potential overlay issues */
+        #player-overlay, .player-overlay {
+            display: none !important;
+            pointer-events: none !important;
+        }
+    </style>
 </head>
 <body>
     <!-- Fixed Top Bar -->
