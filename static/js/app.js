@@ -581,7 +581,7 @@ function renderResult(results) {
     submitButton.innerHTML = 'Try Again';
 }
 
-// Update the submitTranscription function to be more resilient
+// Update the submitTranscription function to use relative URLs and prioritize Flask endpoint
 async function submitTranscription() {
     if (!currentVideoId) {
         alert('No video selected');
@@ -598,70 +598,69 @@ async function submitTranscription() {
     submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
     submitButton.disabled = true;
 
-    // Generate a fake transcript for demo purposes
-    // This ensures the app works even if the backend is not available
     try {
-        // Try multiple endpoints with fallbacks
-        let actualTranscript = null;
+        // First, try the original Flask API endpoint which was working before
+        let response = null;
+        let data = null;
         let error = null;
         
-        // First try the Node.js API endpoint
+        console.log("Attempting to fetch transcript from original Flask endpoint...");
         try {
-            const response = await fetch(`/api/transcript?video_id=${currentVideoId}`);
-            const contentType = response.headers.get('content-type');
-            
-            if (contentType && contentType.indexOf('application/json') !== -1) {
-                const data = await response.json();
-                if (data.success && data.transcript) {
-                    actualTranscript = data.transcript;
+            // Use relative URL, not absolute
+            response = await fetch(`/transcript?video_id=${currentVideoId}`);
+            if (response.ok) {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.indexOf('application/json') !== -1) {
+                    data = await response.json();
+                    if (data && data.transcript) {
+                        console.log("Successfully retrieved transcript from Flask endpoint");
+                    }
                 }
+            } else {
+                console.warn(`Flask endpoint returned status: ${response.status}`);
             }
         } catch (e) {
-            console.error("Error with Node.js endpoint:", e);
+            console.error("Error with Flask endpoint:", e);
             error = e;
         }
         
-        // If Node.js endpoint failed, try the Flask endpoint
-        if (!actualTranscript) {
+        // If the Flask endpoint failed, try the Node.js endpoint
+        if (!data || !data.transcript) {
+            console.log("Flask endpoint failed, trying Node.js endpoint...");
             try {
-                const response = await fetch(`/transcript?video_id=${currentVideoId}`);
-                const contentType = response.headers.get('content-type');
-                
-                if (contentType && contentType.indexOf('application/json') !== -1) {
-                    const data = await response.json();
-                    if (data.transcript) {
-                        actualTranscript = data.transcript;
+                // Use relative URL, not absolute
+                response = await fetch(`/api/transcript?video_id=${currentVideoId}`);
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.indexOf('application/json') !== -1) {
+                        data = await response.json();
+                        if (data.success && data.transcript) {
+                            console.log("Successfully retrieved transcript from Node.js endpoint");
+                        }
                     }
+                } else {
+                    console.warn(`Node.js endpoint returned status: ${response.status}`);
                 }
             } catch (e) {
-                console.error("Error with Flask endpoint:", e);
+                console.error("Error with Node.js endpoint:", e);
                 error = error || e;
             }
         }
         
-        // If both endpoints failed, generate a demo transcript
-        if (!actualTranscript) {
-            console.warn("Both endpoints failed, using demo transcript");
-            // Generate a fake transcript based on the video ID to make it somewhat consistent
-            const seed = currentVideoId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            const words = [
-                "hello", "world", "this", "is", "a", "demo", "transcript", 
-                "for", "testing", "purposes", "only", "please", "enjoy",
-                "thank", "you", "for", "using", "our", "application"
-            ];
-            
-            const transcriptLength = 50 + (seed % 50); // Between 50-100 words
-            let demoTranscript = [];
-            
-            for (let i = 0; i < transcriptLength; i++) {
-                const wordIndex = (seed + i) % words.length;
-                demoTranscript.push(words[wordIndex]);
-            }
-            
-            actualTranscript = demoTranscript.join(' ');
+        // Extract the transcript from whichever endpoint succeeded
+        let actualTranscript = null;
+        if (data) {
+            // Handle both formats - Flask returns {transcript: ...}, Node returns {success: true, transcript: ...}
+            actualTranscript = data.transcript;
         }
         
-        // We now have an actual transcript one way or another
+        // If both endpoints failed, alert the user - we don't want demo transcripts
+        if (!actualTranscript) {
+            console.error("Failed to retrieve transcript from either endpoint");
+            throw new Error("Failed to retrieve transcript. Please try again or check your internet connection.");
+        }
+        
+        // We now have an actual transcript
         lastTranscription = userInput; // Save for potential reuse
         
         // Calculate similarity
@@ -686,7 +685,7 @@ async function submitTranscription() {
         
     } catch (finalError) {
         console.error('Fatal error in transcription processing:', finalError);
-        alert(`Error: Could not process transcription. Please try again later.`);
+        alert(`Error: ${finalError.message}`);
     } finally {
         // Reset button state
         resetSubmitButton();

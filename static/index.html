@@ -26,6 +26,26 @@
             pointer-events: none !important;
         }
     </style>
+    <script>
+        // Add debugging information
+        console.log('Document location:', window.location.href);
+        console.log('Document origin:', window.location.origin);
+        
+        // Log all fetch requests to help debug network issues
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options) {
+            console.log('Fetch request to:', url, options);
+            return originalFetch(url, options)
+                .then(response => {
+                    console.log('Fetch response from:', url, response.status, response.statusText);
+                    return response;
+                })
+                .catch(error => {
+                    console.error('Fetch error for:', url, error);
+                    throw error;
+                });
+        };
+    </script>
 </head>
 <body>
     <!-- Fixed Top Bar -->
