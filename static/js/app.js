@@ -606,18 +606,30 @@ async function submitTranscription() {
         
         console.log("Attempting to fetch transcript from original Flask endpoint...");
         try {
+            console.log(`Requesting: /transcript?video_id=${currentVideoId}`);
             // Use relative URL, not absolute
             response = await fetch(`/transcript?video_id=${currentVideoId}`);
+            console.log(`Flask endpoint response status: ${response.status}`);
+            
             if (response.ok) {
                 const contentType = response.headers.get('content-type');
+                console.log(`Content-Type: ${contentType}`);
+                
                 if (contentType && contentType.indexOf('application/json') !== -1) {
                     data = await response.json();
                     if (data && data.transcript) {
                         console.log("Successfully retrieved transcript from Flask endpoint");
+                    } else {
+                        console.warn("Flask endpoint returned JSON but no transcript data:", data);
                     }
+                } else {
+                    const text = await response.text();
+                    console.warn("Flask endpoint returned non-JSON response:", text.substring(0, 100) + "...");
                 }
             } else {
-                console.warn(`Flask endpoint returned status: ${response.status}`);
+                console.warn(`Flask endpoint error: ${response.status} ${response.statusText}`);
+                const text = await response.text();
+                console.warn("Error response content:", text.substring(0, 100) + "...");
             }
         } catch (e) {
             console.error("Error with Flask endpoint:", e);
@@ -628,22 +640,51 @@ async function submitTranscription() {
         if (!data || !data.transcript) {
             console.log("Flask endpoint failed, trying Node.js endpoint...");
             try {
+                console.log(`Requesting: /api/transcript?video_id=${currentVideoId}`);
                 // Use relative URL, not absolute
                 response = await fetch(`/api/transcript?video_id=${currentVideoId}`);
+                console.log(`Node.js endpoint response status: ${response.status}`);
+                
                 if (response.ok) {
                     const contentType = response.headers.get('content-type');
+                    console.log(`Content-Type: ${contentType}`);
+                    
                     if (contentType && contentType.indexOf('application/json') !== -1) {
                         data = await response.json();
                         if (data.success && data.transcript) {
                             console.log("Successfully retrieved transcript from Node.js endpoint");
+                        } else {
+                            console.warn("Node.js endpoint returned JSON but no transcript data:", data);
                         }
+                    } else {
+                        const text = await response.text();
+                        console.warn("Node.js endpoint returned non-JSON response:", text.substring(0, 100) + "...");
                     }
                 } else {
-                    console.warn(`Node.js endpoint returned status: ${response.status}`);
+                    console.warn(`Node.js endpoint error: ${response.status} ${response.statusText}`);
+                    const text = await response.text();
+                    console.warn("Error response content:", text.substring(0, 100) + "...");
                 }
             } catch (e) {
                 console.error("Error with Node.js endpoint:", e);
                 error = error || e;
+            }
+        }
+        
+        // Let's try a simple diagnostic check if both endpoints failed
+        if (!data || !data.transcript) {
+            console.log("Both transcript endpoints failed, checking diagnostic endpoint...");
+            try {
+                const diagResponse = await fetch('/diagnostic');
+                if (diagResponse.ok) {
+                    const diagData = await diagResponse.json();
+                    console.log("Diagnostic endpoint succeeded. Server is running, but transcript endpoints are failing:", diagData);
+                } else {
+                    console.error("Diagnostic endpoint also failed. Server may not be running correctly.");
+                }
+            } catch (diagError) {
+                console.error("Failed to reach diagnostic endpoint:", diagError);
+                console.error("Network connectivity issue or server not running at all.");
             }
         }
         
@@ -657,7 +698,7 @@ async function submitTranscription() {
         // If both endpoints failed, alert the user - we don't want demo transcripts
         if (!actualTranscript) {
             console.error("Failed to retrieve transcript from either endpoint");
-            throw new Error("Failed to retrieve transcript. Please try again or check your internet connection.");
+            throw new Error("Failed to retrieve transcript. Please check the console for details and ensure the server is running properly.");
         }
         
         // We now have an actual transcript
@@ -685,7 +726,7 @@ async function submitTranscription() {
         
     } catch (finalError) {
         console.error('Fatal error in transcription processing:', finalError);
-        alert(`Error: ${finalError.message}`);
+        alert(`Error: ${finalError.message}\n\nPlease check that the server is running and try again.`);
     } finally {
         // Reset button state
         resetSubmitButton();

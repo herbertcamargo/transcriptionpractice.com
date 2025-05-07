@@ -49,6 +49,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'static', 'index.html'));
 });
 
+// Add a diagnostic page route
+app.get('/diagnostics', (req, res) => {
+  res.sendFile(path.join(__dirname, 'static', 'network-test.html'));
+});
+
 // Transcript API endpoint
 app.get('/api/transcript', async (req, res) => {
   const videoId = req.query.video_id;
@@ -137,19 +142,91 @@ app.get('/transcript', async (req, res) => {
   }
 });
 
-// Add diagnostic endpoints
+// Add enhanced diagnostic endpoints
 app.get('/diagnostic', (req, res) => {
+  // Get network interfaces
+  const os = require('os');
+  const networkInterfaces = os.networkInterfaces();
+  const ipAddresses = [];
+  
+  // Extract IP addresses
+  Object.keys(networkInterfaces).forEach((interfaceName) => {
+    const interfaces = networkInterfaces[interfaceName];
+    interfaces.forEach((iface) => {
+      // Skip internal and non-IPv4 addresses
+      if (!iface.internal && iface.family === 'IPv4') {
+        ipAddresses.push({
+          interface: interfaceName,
+          address: iface.address
+        });
+      }
+    });
+  });
+  
+  // Check for required dependencies
+  let missingDependencies = [];
+  try {
+    require('express');
+  } catch (e) {
+    missingDependencies.push('express');
+  }
+  try {
+    require('youtube-transcript');
+  } catch (e) {
+    missingDependencies.push('youtube-transcript');
+  }
+  
+  // Basic system health check
+  const healthCheck = {
+    memoryUsage: process.memoryUsage(),
+    uptime: process.uptime() + ' seconds',
+    cpuUsage: process.cpuUsage(),
+    freeMemory: os.freemem() / (1024 * 1024) + ' MB',
+    totalMemory: os.totalmem() / (1024 * 1024) + ' MB'
+  };
+  
+  // Return comprehensive diagnostic information
   res.json({
+    status: 'OK',
     serverTime: new Date().toISOString(),
     serverType: 'Node.js',
     serverVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    pid: process.pid,
+    cwd: process.cwd(),
     env: process.env.NODE_ENV || 'development',
+    networkInterfaces: ipAddresses,
+    serverPort: PORT,
+    healthCheck: healthCheck,
+    dependencies: {
+      missing: missingDependencies,
+      status: missingDependencies.length === 0 ? 'OK' : 'MISSING'
+    },
     endpoints: [
       { path: '/', method: 'GET', description: 'Serves the main HTML page' },
       { path: '/api/transcript', method: 'GET', description: 'Node.js API endpoint for transcripts' },
       { path: '/transcript', method: 'GET', description: 'Flask-compatible endpoint for transcripts' },
-      { path: '/diagnostic', method: 'GET', description: 'This diagnostic endpoint' }
-    ]
+      { path: '/diagnostic', method: 'GET', description: 'This diagnostic endpoint' },
+      { path: '/test-transcript', method: 'GET', description: 'Test endpoint for transcript format' },
+      { path: '/network-test', method: 'GET', description: 'Network connectivity test endpoint' }
+    ],
+    howToTest: {
+      mainPage: `http://localhost:${PORT}/`,
+      apiTranscript: `http://localhost:${PORT}/api/transcript?video_id=Ks-_Mh1QhMc`,
+      flaskTranscript: `http://localhost:${PORT}/transcript?video_id=Ks-_Mh1QhMc`
+    }
+  });
+});
+
+// Add a simple network test endpoint
+app.get('/network-test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'If you can see this, your network connection to the server is working properly.',
+    headers: req.headers,
+    yourIp: req.ip,
+    timestamp: new Date().toISOString()
   });
 });
 

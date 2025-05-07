@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcription API Diagnostic Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #f9f9f9;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: 0;
+            padding: 10px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        pre {
+            background: #f1f1f1;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .warning {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        .test-card {
+            border-left: 5px solid #3498db;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .status-ok {
+            background: #27ae60;
+            color: white;
+        }
+        .status-fail {
+            background: #e74c3c;
+            color: white;
+        }
+        .status-pending {
+            background: #f39c12;
+            color: white;
+        }
+        #test-video-id {
+            padding: 8px;
+            width: 250px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Transcription API Diagnostic Tool</h1>
+        
+        <div class="card">
+            <h2>1. Server Connection Test</h2>
+            <p>This test checks if the Node.js server is running and accessible.</p>
+            <button id="test-server">Test Server Connection</button>
+            <span id="server-status" class="status status-pending">Pending</span>
+            <div id="server-result"></div>
+        </div>
+        
+        <div class="card">
+            <h2>2. Diagnostic Endpoint Test</h2>
+            <p>This test checks the diagnostic endpoint that provides detailed server information.</p>
+            <button id="test-diagnostic">Run Diagnostic</button>
+            <span id="diagnostic-status" class="status status-pending">Pending</span>
+            <div id="diagnostic-result"></div>
+        </div>
+        
+        <div class="card">
+            <h2>3. Transcript Endpoint Tests</h2>
+            <p>Test both transcript endpoints with a YouTube video ID.</p>
+            <input type="text" id="test-video-id" placeholder="YouTube Video ID (e.g., Ks-_Mh1QhMc)" value="Ks-_Mh1QhMc">
+            <div>
+                <button id="test-flask">Test Flask Endpoint (/transcript)</button>
+                <span id="flask-status" class="status status-pending">Pending</span>
+            </div>
+            <div id="flask-result"></div>
+            <div style="margin-top: 15px;">
+                <button id="test-node">Test Node.js Endpoint (/api/transcript)</button>
+                <span id="node-status" class="status status-pending">Pending</span>
+            </div>
+            <div id="node-result"></div>
+        </div>
+        
+        <div class="card">
+            <h2>4. Network Information</h2>
+            <p>Your browser details and network information.</p>
+            <pre id="browser-info"></pre>
+        </div>
+        
+        <div class="card">
+            <h2>Troubleshooting Tips</h2>
+            <ul>
+                <li>Make sure the Node.js server is running with <code>run-server-improved.cmd</code></li>
+                <li>Check if you have a firewall blocking the server port (default: 8080)</li>
+                <li>Try accessing the server directly at <a href="http://localhost:8080" target="_blank">http://localhost:8080</a></li>
+                <li>Check if you have all required dependencies installed</li>
+                <li>Look at the server console for any error messages</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Display browser information
+        document.getElementById('browser-info').textContent = `
+User Agent: ${navigator.userAgent}
+Platform: ${navigator.platform}
+Language: ${navigator.language}
+Online: ${navigator.onLine}
+Current URL: ${window.location.href}
+        `;
+        
+        // Test server connection
+        document.getElementById('test-server').addEventListener('click', async () => {
+            const serverStatus = document.getElementById('server-status');
+            const serverResult = document.getElementById('server-result');
+            
+            serverStatus.textContent = 'Testing...';
+            serverStatus.className = 'status status-pending';
+            
+            try {
+                const startTime = performance.now();
+                const response = await fetch('/network-test');
+                const endTime = performance.now();
+                const responseTime = (endTime - startTime).toFixed(2);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    serverStatus.textContent = 'OK';
+                    serverStatus.className = 'status status-ok';
+                    
+                    serverResult.innerHTML = `
+                        <p class="success">✅ Server is running correctly!</p>
+                        <p>Response time: ${responseTime}ms</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    serverStatus.textContent = 'Failed';
+                    serverStatus.className = 'status status-fail';
+                    
+                    serverResult.innerHTML = `
+                        <p class="error">❌ Server responded with status: ${response.status} ${response.statusText}</p>
+                        <p>This suggests the server is running but has an error processing the request.</p>
+                    `;
+                }
+            } catch (error) {
+                serverStatus.textContent = 'Failed';
+                serverStatus.className = 'status status-fail';
+                
+                serverResult.innerHTML = `
+                    <p class="error">❌ Failed to connect to server: ${error.message}</p>
+                    <p>This usually means the server is not running or there's a network issue.</p>
+                    <p>Try running the server with <code>run-server-improved.cmd</code></p>
+                `;
+            }
+        });
+        
+        // Test diagnostic endpoint
+        document.getElementById('test-diagnostic').addEventListener('click', async () => {
+            const diagnosticStatus = document.getElementById('diagnostic-status');
+            const diagnosticResult = document.getElementById('diagnostic-result');
+            
+            diagnosticStatus.textContent = 'Testing...';
+            diagnosticStatus.className = 'status status-pending';
+            
+            try {
+                const response = await fetch('/diagnostic');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    diagnosticStatus.textContent = 'OK';
+                    diagnosticStatus.className = 'status status-ok';
+                    
+                    diagnosticResult.innerHTML = `
+                        <p class="success">✅ Diagnostic endpoint is working!</p>
+                        <p>Server type: ${data.serverType} ${data.serverVersion}</p>
+                        <p>Environment: ${data.env}</p>
+                        <p>Server time: ${data.serverTime}</p>
+                        <details>
+                            <summary>Show full diagnostic data</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `;
+                } else {
+                    diagnosticStatus.textContent = 'Failed';
+                    diagnosticStatus.className = 'status status-fail';
+                    
+                    diagnosticResult.innerHTML = `
+                        <p class="error">❌ Diagnostic endpoint error: ${response.status} ${response.statusText}</p>
+                    `;
+                }
+            } catch (error) {
+                diagnosticStatus.textContent = 'Failed';
+                diagnosticStatus.className = 'status status-fail';
+                
+                diagnosticResult.innerHTML = `
+                    <p class="error">❌ Failed to connect to diagnostic endpoint: ${error.message}</p>
+                `;
+            }
+        });
+        
+        // Test Flask endpoint
+        document.getElementById('test-flask').addEventListener('click', async () => {
+            const videoId = document.getElementById('test-video-id').value.trim();
+            if (!videoId) {
+                alert('Please enter a YouTube Video ID');
+                return;
+            }
+            
+            const flaskStatus = document.getElementById('flask-status');
+            const flaskResult = document.getElementById('flask-result');
+            
+            flaskStatus.textContent = 'Testing...';
+            flaskStatus.className = 'status status-pending';
+            
+            try {
+                const startTime = performance.now();
+                const response = await fetch(`/transcript?video_id=${videoId}`);
+                const endTime = performance.now();
+                const responseTime = (endTime - startTime).toFixed(2);
+                
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    
+                    if (contentType && contentType.indexOf('application/json') !== -1) {
+                        const data = await response.json();
+                        flaskStatus.textContent = 'OK';
+                        flaskStatus.className = 'status status-ok';
+                        
+                        if (data.transcript) {
+                            flaskResult.innerHTML = `
+                                <p class="success">✅ Flask endpoint returned transcript successfully!</p>
+                                <p>Response time: ${responseTime}ms</p>
+                                <p>Transcript length: ${data.transcript.length} characters</p>
+                                <details>
+                                    <summary>Show transcript preview</summary>
+                                    <pre>${data.transcript.substring(0, 200)}...</pre>
+                                </details>
+                            `;
+                        } else {
+                            flaskStatus.textContent = 'Partial';
+                            flaskStatus.className = 'status status-warning';
+                            
+                            flaskResult.innerHTML = `
+                                <p class="warning">⚠️ Flask endpoint returned JSON but no transcript data</p>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            `;
+                        }
+                    } else {
+                        flaskStatus.textContent = 'Failed';
+                        flaskStatus.className = 'status status-fail';
+                        
+                        const text = await response.text();
+                        flaskResult.innerHTML = `
+                            <p class="error">❌ Flask endpoint returned non-JSON response</p>
+                            <p>Content-Type: ${contentType || 'none'}</p>
+                            <pre>${text.substring(0, 200)}...</pre>
+                        `;
+                    }
+                } else {
+                    flaskStatus.textContent = 'Failed';
+                    flaskStatus.className = 'status status-fail';
+                    
+                    try {
+                        const errorData = await response.json();
+                        flaskResult.innerHTML = `
+                            <p class="error">❌ Flask endpoint error: ${response.status} ${response.statusText}</p>
+                            <pre>${JSON.stringify(errorData, null, 2)}</pre>
+                        `;
+                    } catch (e) {
+                        const text = await response.text();
+                        flaskResult.innerHTML = `
+                            <p class="error">❌ Flask endpoint error: ${response.status} ${response.statusText}</p>
+                            <pre>${text.substring(0, 200)}...</pre>
+                        `;
+                    }
+                }
+            } catch (error) {
+                flaskStatus.textContent = 'Failed';
+                flaskStatus.className = 'status status-fail';
+                
+                flaskResult.innerHTML = `
+                    <p class="error">❌ Failed to connect to Flask endpoint: ${error.message}</p>
+                `;
+            }
+        });
+        
+        // Test Node.js endpoint
+        document.getElementById('test-node').addEventListener('click', async () => {
+            const videoId = document.getElementById('test-video-id').value.trim();
+            if (!videoId) {
+                alert('Please enter a YouTube Video ID');
+                return;
+            }
+            
+            const nodeStatus = document.getElementById('node-status');
+            const nodeResult = document.getElementById('node-result');
+            
+            nodeStatus.textContent = 'Testing...';
+            nodeStatus.className = 'status status-pending';
+            
+            try {
+                const startTime = performance.now();
+                const response = await fetch(`/api/transcript?video_id=${videoId}`);
+                const endTime = performance.now();
+                const responseTime = (endTime - startTime).toFixed(2);
+                
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    
+                    if (contentType && contentType.indexOf('application/json') !== -1) {
+                        const data = await response.json();
+                        nodeStatus.textContent = 'OK';
+                        nodeStatus.className = 'status status-ok';
+                        
+                        if (data.success && data.transcript) {
+                            nodeResult.innerHTML = `
+                                <p class="success">✅ Node.js endpoint returned transcript successfully!</p>
+                                <p>Response time: ${responseTime}ms</p>
+                                <p>Transcript length: ${data.transcript.length} characters</p>
+                                <details>
+                                    <summary>Show transcript preview</summary>
+                                    <pre>${data.transcript.substring(0, 200)}...</pre>
+                                </details>
+                            `;
+                        } else {
+                            nodeStatus.textContent = 'Partial';
+                            nodeStatus.className = 'status status-warning';
+                            
+                            nodeResult.innerHTML = `
+                                <p class="warning">⚠️ Node.js endpoint returned JSON but no transcript data</p>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            `;
+                        }
+                    } else {
+                        nodeStatus.textContent = 'Failed';
+                        nodeStatus.className = 'status status-fail';
+                        
+                        const text = await response.text();
+                        nodeResult.innerHTML = `
+                            <p class="error">❌ Node.js endpoint returned non-JSON response</p>
+                            <p>Content-Type: ${contentType || 'none'}</p>
+                            <pre>${text.substring(0, 200)}...</pre>
+                        `;
+                    }
+                } else {
+                    nodeStatus.textContent = 'Failed';
+                    nodeStatus.className = 'status status-fail';
+                    
+                    try {
+                        const errorData = await response.json();
+                        nodeResult.innerHTML = `
+                            <p class="error">❌ Node.js endpoint error: ${response.status} ${response.statusText}</p>
+                            <pre>${JSON.stringify(errorData, null, 2)}</pre>
+                        `;
+                    } catch (e) {
+                        const text = await response.text();
+                        nodeResult.innerHTML = `
+                            <p class="error">❌ Node.js endpoint error: ${response.status} ${response.statusText}</p>
+                            <pre>${text.substring(0, 200)}...</pre>
+                        `;
+                    }
+                }
+            } catch (error) {
+                nodeStatus.textContent = 'Failed';
+                nodeStatus.className = 'status status-fail';
+                
+                nodeResult.innerHTML = `
+                    <p class="error">❌ Failed to connect to Node.js endpoint: ${error.message}</p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html> 
