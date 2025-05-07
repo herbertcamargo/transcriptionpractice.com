@@ -38,6 +38,43 @@
             z-index: 1;
             position: relative;
         }
+        
+        /* Server status indicator styles */
+        .server-status {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 15px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        .server-status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ccc;
+            margin-right: 5px;
+        }
+        
+        .server-status-dot.online {
+            background-color: #2ecc71;
+        }
+        
+        .server-status-dot.offline {
+            background-color: #e74c3c;
+        }
+        
+        .server-status-dot.checking {
+            background-color: #f39c12;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { opacity: 0.3; }
+        }
     </style>
     <script>
         // Add debugging information
@@ -84,6 +121,10 @@
                     <li><a class="dropdown-item" href="#" data-lang="es">ES</a></li>
                 </ul>
             </div>
+            <div class="server-status">
+                <span id="server-status-indicator" class="server-status-dot"></span>
+                <span id="server-status-text">Server Status</span>
+            </div>
             <a href="/plans" class="nav-link" id="plans-link">Plans</a>
             <a href="/login" class="login-button" id="login-link">Login</a>
         </div>
@@ -112,8 +153,8 @@
                 <!-- Video Player Section -->
                 <div class="video-section" id="video-section">
                     <h4 id="video-title">Video Title</h4>
-                    <div class="ratio ratio-16x9 mb-3" style="min-height:500px;">
-                        <div id="video-player" style="position:relative; z-index:10; pointer-events:auto;"></div>
+                    <div class="relative mb-3" style="aspect-ratio: 16/9;">
+                        <div id="video-player" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
                         <div id="waveform" style="width:100%;height:80px;margin:16px 0;"></div>
                         <div class="video-placeholder">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">

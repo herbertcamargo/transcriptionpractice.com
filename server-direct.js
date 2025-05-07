@@ -27,7 +27,16 @@ app.use(helmet({
   }
 }));
 app.use(compression());
-app.use(cors());
+
+// Configure CORS to allow requests from transcriptionpractice.com
+const corsOptions = {
+  origin: ['http://localhost:8080', 'https://transcriptionpractice.com', 'http://transcriptionpractice.com'],
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+app.use(cors(corsOptions));
+
 app.use(express.json());
 
 // Rate limiting to prevent abuse

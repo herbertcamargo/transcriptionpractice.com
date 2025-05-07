@@ -10,6 +10,18 @@ let currentLanguage = localStorage.getItem('preferredLanguage') || 'en'; // Defa
 const TYPING_TIMEOUT = 2000; // 2 seconds
 let lastTranscription = ''; // Store the last submitted transcription
 
+// API Configuration - use relative paths to prevent domain issues
+const API_PATHS = {
+    transcript: '/api/transcript',
+    flaskTranscript: '/transcript',
+    diagnostic: '/diagnostic'
+};
+
+// Check if we need to use a different base URL for API calls
+const BASE_API_URL = (window.location.hostname === 'transcriptionpractice.com') 
+    ? 'http://localhost:8080' // If on production domain, connect to local server
+    : ''; // Empty string for relative URLs when using localhost
+
 // DOM Elements
 const searchInput = document.getElementById('search-input');
 const searchButton = document.getElementById('search-button');
@@ -700,9 +712,9 @@ async function submitTranscription() {
         
         console.log("Attempting to fetch transcript from original Flask endpoint...");
         try {
-            console.log(`Requesting: /transcript?video_id=${currentVideoId}&language=${currentLanguage}`);
+            console.log(`Requesting: ${BASE_API_URL}${API_PATHS.flaskTranscript}?video_id=${currentVideoId}&language=${currentLanguage}`);
             // Use relative URL, not absolute, and include language
-            response = await fetch(`/transcript?video_id=${currentVideoId}&language=${currentLanguage}`);
+            response = await fetch(`${BASE_API_URL}${API_PATHS.flaskTranscript}?video_id=${currentVideoId}&language=${currentLanguage}`);
             console.log(`Flask endpoint response status: ${response.status}`);
             
             if (response.ok) {
@@ -735,9 +747,9 @@ async function submitTranscription() {
         if (!data || !data.transcript) {
             console.log("Flask endpoint failed, trying Node.js endpoint...");
             try {
-                console.log(`Requesting: /api/transcript?video_id=${currentVideoId}&language=${currentLanguage}`);
+                console.log(`Requesting: ${BASE_API_URL}${API_PATHS.transcript}?video_id=${currentVideoId}&language=${currentLanguage}`);
                 // Use relative URL, not absolute, and include language
-                response = await fetch(`/api/transcript?video_id=${currentVideoId}&language=${currentLanguage}`);
+                response = await fetch(`${BASE_API_URL}${API_PATHS.transcript}?video_id=${currentVideoId}&language=${currentLanguage}`);
                 console.log(`Node.js endpoint response status: ${response.status}`);
                 
                 if (response.ok) {
@@ -770,7 +782,7 @@ async function submitTranscription() {
         if (!data || !data.transcript) {
             console.log("Both transcript endpoints failed, checking diagnostic endpoint...");
             try {
-                const diagResponse = await fetch('/diagnostic');
+                const diagResponse = await fetch(`${BASE_API_URL}${API_PATHS.diagnostic}`);
                 if (diagResponse.ok) {
                     const diagData = await diagResponse.json();
                     console.log("Diagnostic endpoint succeeded. Server is running, but transcript endpoints are failing:", diagData);
@@ -780,6 +792,16 @@ async function submitTranscription() {
             } catch (diagError) {
                 console.error("Failed to reach diagnostic endpoint:", diagError);
                 console.error("Network connectivity issue or server not running at all.");
+                
+                // Add a helpful message about starting the server
+                if (window.location.hostname === 'transcriptionpractice.com') {
+                    console.error("You're on the production site but the local server isn't running.");
+                    console.error("Please run the local server with: run-server-improved.cmd");
+                } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    console.error("You're on localhost but the server isn't responding.");
+                    console.error("Please make sure the server is running on port 8080");
+                    console.error("Run the server check with: check-server-status.cmd");
+                }
             }
         }
         
@@ -793,7 +815,18 @@ async function submitTranscription() {
         // If both endpoints failed, alert the user - we don't want demo transcripts
         if (!actualTranscript) {
             console.error("Failed to retrieve transcript from either endpoint");
-            throw new Error("Failed to retrieve transcript. Please check the console for details and ensure the server is running properly.");
+            
+            // Create a more helpful error message
+            let errorMsg = "Failed to retrieve transcript. ";
+            
+            if (window.location.hostname === 'transcriptionpractice.com') {
+                errorMsg += "The local server needs to be running on your computer.\n\n" +
+                          "Please run the server with run-server-improved.cmd and try again.";
+            } else {
+                errorMsg += "Please check the console for details and ensure the server is running properly.";
+            }
+            
+            throw new Error(errorMsg);
         }
         
         // We now have an actual transcript
@@ -1190,3 +1223,37 @@ function setupLanguageSelector() {
         });
     });
 }
+
+// Server status indicator
+function checkServerStatus() {
+    const indicator = document.getElementById('server-status-indicator');
+    const statusText = document.getElementById('server-status-text');
+    
+    if (!indicator || !statusText) return;
+    
+    // Set to checking state
+    indicator.className = 'server-status-dot checking';
+    statusText.textContent = 'Checking server...';
+    
+    fetch(`${BASE_API_URL}${API_PATHS.diagnostic}`)
+        .then(response => {
+            if (response.ok) {
+                indicator.className = 'server-status-dot online';
+                statusText.textContent = 'Server Online';
+            } else {
+                indicator.className = 'server-status-dot offline';
+                statusText.textContent = 'Server Error';
+            }
+        })
+        .catch(error => {
+            indicator.className = 'server-status-dot offline';
+            statusText.textContent = 'Server Offline';
+            console.warn('Server status check failed:', error);
+        });
+}
+
+// Check server status on page load and every 30 seconds
+document.addEventListener('DOMContentLoaded', () => {
+    checkServerStatus();
+    setInterval(checkServerStatus, 30000);
+});
