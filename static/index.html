@@ -9,21 +9,20 @@
     <link rel="icon" type="image/svg+xml" href="/static/img/headphone.svg">
     <link rel="icon" type="image/png" href="/static/img/headphone.svg">
     <style>
-        /* Ensure YouTube iframe is fully interactive */
-        #video-player, #video-player iframe {
+        /* Make sure YouTube iframe is completely interactive */
+        #video-player, 
+        #video-player iframe,
+        .video-section {
             pointer-events: auto !important;
-            z-index: 10;
+            z-index: auto !important;
         }
         
-        /* Prevent any other elements from overlaying the player */
-        .video-section, .ratio {
-            position: relative;
-            z-index: 1;
-        }
-        
-        /* Fix for any potential overlay issues */
-        #player-overlay, .player-overlay {
+        /* Ensure no overlays can interfere */
+        #player-overlay, 
+        .player-overlay {
             display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
             pointer-events: none !important;
         }
     </style>

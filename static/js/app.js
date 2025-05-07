@@ -32,31 +32,10 @@ const statsContent = document.getElementById('stats-content');
 // Set search input placeholder
 searchInput.placeholder = 'Enter search keywords or paste video link';
 
-// Create overlay for hiding YouTube controls - DISABLED TO PREVENT PLAYER ISSUES
-function createPlayerOverlay() {
-    console.log('Player overlay creation disabled to prevent interaction issues');
-    return null;
-}
-
-// Show overlay to prevent control display - DISABLED TO PREVENT PLAYER ISSUES
-function showPlayerOverlay() {
-    console.log('Player overlay disabled to prevent interaction issues');
-    return;
-}
-
-// Hide overlay to allow normal controls - DISABLED TO PREVENT PLAYER ISSUES
-function hidePlayerOverlay() {
-    console.log('Player overlay disabled to prevent interaction issues');
-    
-    // Aggressively remove any existing overlays
-    const overlays = document.querySelectorAll('#player-overlay, .player-overlay');
-    overlays.forEach(overlay => {
-        if (overlay && overlay.parentNode) {
-            overlay.parentNode.removeChild(overlay);
-        }
-    });
-    return;
-}
+// Remove all player overlay functions and make them do nothing
+function createPlayerOverlay() { return null; }
+function showPlayerOverlay() { return; }
+function hidePlayerOverlay() { return; }
 
 // Set default pause delay to 2 seconds
 window.addEventListener('DOMContentLoaded', () => {
@@ -118,30 +97,7 @@ if (transcriptionInput) {
             console.log('Pause delay condition met.');
             
             if (!pauseDelayActive) {
-                console.log('Activating pause delay - pausing video and showing overlay.');
-                // Technique 1: CSS injection (keep trying)
-                const iframe = document.querySelector('#video-player iframe');
-                if (iframe) {
-                    const style = document.createElement('style');
-                    style.id = 'ytp-hide-style'; // Give it an ID for easier removal
-                    style.textContent = `
-                        .ytp-chrome-top, .ytp-chrome-bottom, 
-                        .ytp-gradient-top, .ytp-gradient-bottom, 
-                        .ytp-pause-overlay, .ytp-endscreen-content {
-                            display: none !important;
-                        }
-                    `;
-                    try {
-                        iframe.contentDocument.head.appendChild(style);
-                        console.log('Injected CSS to hide controls.');
-                    } catch (e) {
-                        console.log('Could not inject styles directly.');
-                    }
-                }
-                
-                // Technique 2: Overlay div
-                showPlayerOverlay();
-                
+                console.log('Activating pause delay - pausing video.');
                 youtubePlayer.pauseVideo();
                 pauseDelayActive = true;
             } else {
@@ -155,21 +111,7 @@ if (transcriptionInput) {
             typingTimer = setTimeout(() => {
                 console.log('Pause delay timer finished.');
                 if (playerReady && youtubePlayer && youtubePlayer.playVideo) {
-                    console.log('Resuming video and hiding overlay.');
-                    hidePlayerOverlay();
-                    
-                    const iframe = document.querySelector('#video-player iframe');
-                    if (iframe) {
-                        try {
-                            const style = iframe.contentDocument.getElementById('ytp-hide-style');
-                            if (style) {
-                                style.remove();
-                                console.log('Removed injected CSS.');
-                            }
-                        } catch (e) {
-                            console.log('Could not remove styles directly.');
-                        }
-                    }
+                    console.log('Resuming video.');
                     
                     const rewindSeconds = parseFloat(rewindTimeSelect.value);
                     if (rewindSeconds > 0) {
@@ -497,8 +439,8 @@ function calculateWPM(text) {
     return Math.round(wordCount / totalTimeInMinutes);
 }
 
-// Load a video
-async function loadVideo(videoId, title) {
+// Modify the loadVideo function to ensure zero interference with YouTube player
+function loadVideo(videoId, title) {
     currentVideoId = videoId;
     wasManuallyPaused = false;
     playerReady = false;
@@ -546,40 +488,27 @@ async function loadVideo(videoId, title) {
         youtubePlayer.destroy();
     }
     
-    // Create new YouTube player
+    // Create new YouTube player with minimal options
     youtubePlayer = new YT.Player('video-player', {
         height: '390',
         width: '640',
         videoId: videoId,
         playerVars: {
             'playsinline': 1,
-            'enablejsapi': 1,
-            'origin': window.location.origin,
-            'rel': 0,
-            'showinfo': 0,
-            'controls': 1,
-            'modestbranding': 1,
-            'iv_load_policy': 3,
-            'fs': 1,
-            'autohide': 1,
-            'disablekb': 0 // Enable keyboard controls
+            'origin': window.location.origin
         },
         events: {
-            'onReady': onPlayerReady,
-            'onStateChange': onPlayerStateChange,
-            // Add this to prevent default behavior when clicking on the player
-            'onApiChange': function() {
-                // Ensure full user control
-                console.log('API state changed, ensuring player is fully interactive');
+            'onReady': function(event) {
+                youtubePlayer = event.target;
+                playerReady = true;
+            },
+            'onStateChange': function(event) {
+                // Only update play/stop button state
+                if (!playerReady) return;
+                updatePlayStopButton(event.data);
             }
         }
     });
-    
-    // Remove the overlay and styles that prevent interaction
-    const existingOverlay = document.getElementById('player-overlay');
-    if (existingOverlay) {
-        existingOverlay.remove();
-    }
     
     // Reset transcription and button state
     transcriptionInput.value = '';
@@ -605,75 +534,10 @@ async function generateWaveformData(videoId) {
     }
 }
 
-// YouTube player event handlers
-function onPlayerReady(event) {
-    youtubePlayer = event.target;
-    playerReady = true;
-    pauseDelayActive = false;
-    
-    // Make sure NO overlays exist that could interfere with player interaction
-    const overlays = document.querySelectorAll('#player-overlay, .player-overlay');
-    overlays.forEach(overlay => overlay.remove());
-    
-    // Remove any pointer-events restrictions
-    const iframe = document.querySelector('#video-player iframe');
-    if (iframe) {
-        iframe.style.pointerEvents = 'auto';
-    }
-    
-    // Remove any container restrictions
-    const playerContainer = videoPlayer.parentElement;
-    if (playerContainer) {
-        playerContainer.style.pointerEvents = 'auto';
-    }
-    
-    // Remove any event listeners that might interfere with video playback
-    const videoContainer = document.querySelector('.video-section') || videoPlayer.parentElement;
-    if (videoContainer) {
-        const clone = videoContainer.cloneNode(true);
-        if (videoContainer.parentNode) {
-            // Preserve any child elements other than the player
-            const playerElem = videoContainer.querySelector('#video-player');
-            if (playerElem) {
-                const playerParent = playerElem.parentNode;
-                // Replace with clean version
-                videoContainer.parentNode.replaceChild(clone, videoContainer);
-                // Re-add the player
-                const newPlayerElem = clone.querySelector('#video-player');
-                if (newPlayerElem) {
-                    newPlayerElem.replaceWith(playerElem);
-                }
-            }
-        }
-    }
-    
-    console.log('Player ready and fully interactive');
-}
-
-function onPlayerStateChange(event) {
-    console.log(`Player state changed to: ${event.data}`);
-    if (!playerReady) return;
-
-    const newState = event.data;
-    updatePlayStopButton(newState);
-    
-    if (newState === YT.PlayerState.PAUSED) {
-        console.log(`Paused. Pause Delay Active: ${pauseDelayActive}`);
-        if (!pauseDelayActive) {
-            console.log('Manual pause detected, hiding overlay.');
-            hidePlayerOverlay();
-            wasManuallyPaused = true;
-        }
-    } else if (newState === YT.PlayerState.PLAYING) {
-        console.log('Playing. Hiding overlay.');
-        wasManuallyPaused = false;
-        pauseDelayActive = false;
-        hidePlayerOverlay();
-    } else if (newState === YT.PlayerState.ENDED) {
-        console.log('Video ended. Hiding overlay.');
-        hidePlayerOverlay();
-        pauseDelayActive = false;
-    }
+// Simplify the preloadAndLoadVideo function to be synchronous
+function preloadAndLoadVideo(videoId, title) {
+    // Directly load the video without any async operations
+    loadVideo(videoId, title);
 }
 
 // Render the results with differences highlighted
@@ -863,12 +727,6 @@ function updatePlayStopButton(playerState) {
 window.addEventListener('beforeunload', () => {
     resetSubmitButton();
 });
-
-// Nova função para pré-carregar a transcrição antes de carregar o vídeo
-async function preloadAndLoadVideo(videoId, title) {
-    // Directly load the video without any preloading
-    loadVideo(videoId, title);
-}
 
 function showHomeUser() {
     history.pushState({}, '', '/home-user');
