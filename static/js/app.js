@@ -573,8 +573,8 @@ function loadVideo(videoId, title) {
     
     // Create new YouTube player with minimal options
     youtubePlayer = new YT.Player('video-player', {
-        height: '100%',
-        width: '100%',
+        height: '360',
+        width: '640',
         videoId: videoId,
         playerVars: {
             'playsinline': 1,
