@@ -37,6 +37,54 @@ function createPlayerOverlay() { return null; }
 function showPlayerOverlay() { return; }
 function hidePlayerOverlay() { return; }
 
+// Fix for div.canvases appearing over the player
+function fixPlayerCanvases() {
+    // Apply fixes to any existing canvases
+    const canvases = document.querySelector('div.canvases');
+    if (canvases) {
+        canvases.style.position = 'relative';
+        canvases.style.zIndex = '-1';
+        canvases.style.pointerEvents = 'none';
+        console.log('Fixed div.canvases layer');
+    }
+    
+    // Set a mutation observer to handle dynamically added canvases
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.addedNodes.length) {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.classList && node.classList.contains('canvases')) {
+                        node.style.position = 'relative';
+                        node.style.zIndex = '-1';
+                        node.style.pointerEvents = 'none';
+                        console.log('Fixed dynamically added canvases');
+                    }
+                });
+            }
+        });
+    });
+    
+    // Start observing the document with the configured parameters
+    observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// Run the fix when the page loads
+document.addEventListener('DOMContentLoaded', fixPlayerCanvases);
+
+// Also run the fix when a video is loaded
+function ensurePlayerInteractivity() {
+    // Ensure the player is fully interactive
+    const playerElement = document.getElementById('video-player');
+    if (playerElement && playerElement.querySelector('iframe')) {
+        const iframe = playerElement.querySelector('iframe');
+        iframe.style.pointerEvents = 'auto';
+        iframe.style.zIndex = '10';
+    }
+    
+    // Fix any canvases
+    fixPlayerCanvases();
+}
+
 // Set default pause delay to 2 seconds
 window.addEventListener('DOMContentLoaded', () => {
     pauseDelaySelect.value = "2";
@@ -69,9 +117,44 @@ function initWaveSurfer() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', initWaveSurfer);
 
+// Additional fix for YouTube iframe accessibility - ensure no elements block interaction
+function makeYouTubeIframeAccessible() {
+    // Find all YouTube iframes
+    const iframes = document.querySelectorAll('iframe[src*="youtube.com"]');
+    iframes.forEach(iframe => {
+        // Make sure the iframe has high z-index and proper interaction
+        iframe.style.position = 'relative';
+        iframe.style.zIndex = '100';
+        iframe.style.pointerEvents = 'auto';
+        
+        // Check for parent elements that might interfere and fix them
+        let parent = iframe.parentElement;
+        while (parent && parent !== document.body) {
+            // Make sure parent doesn't block interaction
+            const computedStyle = window.getComputedStyle(parent);
+            if (computedStyle.pointerEvents === 'none') {
+                parent.style.pointerEvents = 'auto';
+            }
+            
+            // If div.canvases is among the parent elements, make sure it's behind
+            if (parent.classList && parent.classList.contains('canvases')) {
+                parent.style.zIndex = '-1';
+                parent.style.pointerEvents = 'none';
+            }
+            
+            parent = parent.parentElement;
+        }
+    });
+}
+
+// Add this fix to window load event
+window.addEventListener('load', makeYouTubeIframeAccessible);
+
 // YouTube API ready callback
 window.onYouTubeIframeAPIReady = function() {
     console.log('YouTube API Ready');
+    // Call our fix when YouTube API is ready
+    setTimeout(makeYouTubeIframeAccessible, 1000); // Slight delay to ensure elements are loaded
 };
 
 // Event Listeners
@@ -501,11 +584,15 @@ function loadVideo(videoId, title) {
             'onReady': function(event) {
                 youtubePlayer = event.target;
                 playerReady = true;
+                // Ensure the player is fully interactive after it's ready
+                ensurePlayerInteractivity();
             },
             'onStateChange': function(event) {
                 // Only update play/stop button state
                 if (!playerReady) return;
                 updatePlayStopButton(event.data);
+                // Fix player canvases again in case they've been recreated
+                fixPlayerCanvases();
             }
         }
     });
